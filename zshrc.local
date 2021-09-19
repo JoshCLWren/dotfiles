@@ -1,0 +1,64 @@
+export EDITOR="code"
+path+=('/usr/local/bin/redcli')
+export PATH=".git/safe/../../bin:$HOME/.bin:$PATH"
+
+
+alias be='bundle exec'
+alias status='git status'
+alias commit='git commit'
+alias add='git add .'
+#alias rspec='bundle exec rspec'
+alias refresh='source ~/.zshrc'
+alias bug='pytest -sxv tests --last-failed --pdb'
+alias get='git'
+alias gti='git'
+alias tnm='/Applications/Postgres.app/Contents/Versions/12/bin/psql -p5432 "tnm"'
+
+function killport() {
+  if [ $# -eq 0 ]
+  then
+    echo "usage: killport [port]\nnote: separate multiple ports with comma"
+  else
+    kill $(lsof -ti:$1)
+  fi
+}
+
+function findport() {
+  if [ $# -eq 0 ]
+  then
+    echo "usage: findport [port]"
+  else
+    netstat -vanp tcp | grep $1
+  fi
+}
+
+export PYENV_ROOT="$HOME/.pyenv"
+export PATH="$PYENV_ROOT/bin:$PATH"
+eval "$(direnv hook zsh)"
+eval "$(pyenv init --path)"
+eval "$(pyenv init -)"
+eval "$(pyenv virtualenv-init -)"
+
+
+# Load version control information
+autoload -Uz vcs_info
+precmd() { vcs_info }
+
+# Format the vcs_info_msg_0_ variable
+#zstyle ':vcs_info:git:*' formats 'branch %b'
+
+# Set up the prompt (with git branch name)
+#setopt PROMPT_SUBST
+#PROMPT='${PWD/#$HOME/~} on ${vcs_info_msg_0_}:>'
+
+
+# The next line updates PATH for the Google Cloud SDK.
+if [ -f '/Users/josh.wren/google-cloud-sdk/path.zsh.inc' ]; then . '/Users/josh.wren/google-cloud-sdk/path.zsh.inc'; fi
+
+# The next line enables shell command completion for gcloud.
+if [ -f '/Users/josh.wren/google-cloud-sdk/completion.zsh.inc' ]; then . '/Users/josh.wren/google-cloud-sdk/completion.zsh.inc'; fi
+
+# source "/usr/local/opt/kube-ps1/share/kube-ps1.sh"
+# PS1='$(kube_ps1)'$PS1
+
+eval "$(/Users/josh.wren/code/YouVersion/yv/bin/yv init -)"
