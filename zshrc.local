@@ -62,3 +62,5 @@ if [ -f '/Users/josh.wren/google-cloud-sdk/completion.zsh.inc' ]; then . '/Users
 # PS1='$(kube_ps1)'$PS1
 
 eval "$(/Users/josh.wren/code/YouVersion/yv/bin/yv init -)"
+tmux new
+tmux set mouse on
