@@ -1,5 +1,4 @@
 [core]
-  editor = code --wait
 	excludesfile = /Users/josh.wren/.gitignore
 [diff]
   tool = vscode
