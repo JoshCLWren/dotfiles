@@ -10,11 +10,8 @@ alias add='git add .'
 #alias rspec='bundle exec rspec'
 alias refresh='source ~/.zshrc'
 alias bug='pytest -sxv tests --last-failed --pdb'
-alias get='git'
-alias gti='git'
 alias tnm='/Applications/Postgres.app/Contents/Versions/12/bin/psql -p5432 "tnm"'
 alias mouse='tmux set mouse'
-alias oops='fuck'
 
 function killport() {
   if [ $# -eq 0 ]
@@ -76,7 +73,8 @@ if [ -f '/Users/josh.wren/google-cloud-sdk/completion.zsh.inc' ]; then . '/Users
 
 eval "$(/Users/josh.wren/code/YouVersion/yv/bin/yv init -)"
 eval $(thefuck --alias)
-alias oops='fuck'
+alias oops='fuck | lolcat'
+alias z='code ~/dotfiles-local/zshrc.local'
 
 tmux new
 tmux set mouse on
