@@ -13,6 +13,8 @@ alias bug='pytest -sxv tests --last-failed --pdb'
 alias get='git'
 alias gti='git'
 alias tnm='/Applications/Postgres.app/Contents/Versions/12/bin/psql -p5432 "tnm"'
+alias mouse='tmux set mouse'
+alias oops='fuck'
 
 function killport() {
   if [ $# -eq 0 ]
@@ -73,5 +75,8 @@ if [ -f '/Users/josh.wren/google-cloud-sdk/completion.zsh.inc' ]; then . '/Users
 # PS1='$(kube_ps1)'$PS1
 
 eval "$(/Users/josh.wren/code/YouVersion/yv/bin/yv init -)"
+eval $(thefuck --alias)
+alias oops='fuck'
+
 tmux new
 tmux set mouse on
