@@ -12,6 +12,7 @@ alias refresh='source ~/.zshrc'
 alias bug='pytest -sxv tests --last-failed --pdb'
 alias tnm='/Applications/Postgres.app/Contents/Versions/12/bin/psql -p5432 "tnm"'
 alias mouse='tmux set mouse'
+alias profile='mikeybuild --aiohttp --spec ~/Code/Youversion/service-specs/services/profile/index.yaml --app-path ~/Code/Youversion/ | lolcat'
 
 function killport() {
   if [ $# -eq 0 ]
@@ -75,6 +76,5 @@ eval "$(/Users/josh.wren/code/YouVersion/yv/bin/yv init -)"
 eval $(thefuck --alias)
 alias oops='fuck | lolcat'
 alias z='code ~/dotfiles-local/zshrc.local'
-
-tmux new
-tmux set mouse on
+alias you='cd ~/Code/YouVersion/'
+alias nyan='cd ~/go-nyancat && ./go-nyancat | lolcat'
