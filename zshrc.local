@@ -55,12 +55,11 @@ eval "$(pyenv virtualenv-init -)"
 autoload -Uz vcs_info
 precmd() { vcs_info }
 
-# Format the vcs_info_msg_0_ variable
-#zstyle ':vcs_info:git:*' formats 'branch %b'
+
 
 # Set up the prompt (with git branch name)
-#setopt PROMPT_SUBST
-#PROMPT='${PWD/#$HOME/~} on ${vcs_info_msg_0_}:>'
+source ~/Code/zsh-git-prompt/zshrc.sh
+PROMPT='%B%m%~%b$(git_super_status) %# '
 
 
 # The next line updates PATH for the Google Cloud SDK.
@@ -78,3 +77,4 @@ alias oops='fuck | lolcat'
 alias z='code ~/dotfiles-local/zshrc.local'
 alias you='cd ~/Code/YouVersion/'
 alias nyan='cd ~/go-nyancat && ./go-nyancat | lolcat'
+
