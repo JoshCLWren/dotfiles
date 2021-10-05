@@ -58,7 +58,7 @@ precmd() { vcs_info }
 
 
 # Set up the prompt (with git branch name)
-source ~/Code/zsh-git-prompt/zshrc.sh
+source ~/dotfiles-local/zsh-git-prompt/zshrc.sh
 PROMPT='%B%m%~%b$(git_super_status) %# '
 
 
