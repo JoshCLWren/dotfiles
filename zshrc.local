@@ -8,7 +8,7 @@ alias status='git status'
 alias commit='git commit'
 alias add='git add .'
 #alias rspec='bundle exec rspec'
-alias refresh='source ~/.zshrc'
+alias refresh='exec zsh'
 alias bug='pytest -sxv tests --last-failed --pdb'
 alias tnm='/Applications/Postgres.app/Contents/Versions/12/bin/psql -p5432 "tnm"'
 alias mouse='tmux set mouse'
@@ -50,16 +50,9 @@ eval "$(pyenv init --path)"
 eval "$(pyenv init -)"
 eval "$(pyenv virtualenv-init -)"
 
-
-# Load version control information
-autoload -Uz vcs_info
-precmd() { vcs_info }
-
-
-
 # Set up the prompt (with git branch name)
 source ~/dotfiles-local/zsh-git-prompt/zshrc.sh
-PROMPT='%B%m%~%b$(git_super_status) %# '
+PROMPT='%B%F{027}%1~%b%f $(git_super_status) %f%# '
 
 
 # The next line updates PATH for the Google Cloud SDK.
@@ -68,8 +61,9 @@ if [ -f '/Users/josh.wren/google-cloud-sdk/path.zsh.inc' ]; then . '/Users/josh.
 # The next line enables shell command completion for gcloud.
 if [ -f '/Users/josh.wren/google-cloud-sdk/completion.zsh.inc' ]; then . '/Users/josh.wren/google-cloud-sdk/completion.zsh.inc'; fi
 
-# source "/usr/local/opt/kube-ps1/share/kube-ps1.sh"
-# PS1='$(kube_ps1)'$PS1
+source "/usr/local/opt/kube-ps1/share/kube-ps1.sh"
+PS1='$(kube_ps1)'$PS1
+kubeoff
 
 eval "$(/Users/josh.wren/code/YouVersion/yv/bin/yv init -)"
 eval $(thefuck --alias)
