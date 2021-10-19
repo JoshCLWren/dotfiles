@@ -71,4 +71,4 @@ alias oops='fuck | lolcat'
 alias z='code ~/dotfiles-local/zshrc.local'
 alias you='cd ~/Code/YouVersion/'
 alias nyan='cd ~/go-nyancat && ./go-nyancat | lolcat'
-
+alias gl="git log --oneline --decorate --graph -10"
