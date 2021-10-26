@@ -37,7 +37,8 @@ function redspec() {
     then
         echo "usage: redspec [service-name]"
     else
-        cd ..pyenv activate $1
+        cd ..
+        pyenv activate $1
         redcli $1 service-specs 0.3.1
         pyenv deactivate
         cd $1
