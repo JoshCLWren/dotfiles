@@ -1,5 +1,7 @@
 export EDITOR="code"
+path+=('/Users/josh.wren/.local/bin')
 path+=('/usr/local/bin/redcli')
+path+=('/Users/josh.wren/dotfiles-local/zsh-git-prompt/src/.bin')
 export PATH=".git/safe/../../bin:$HOME/.bin:$PATH"
 
 
@@ -12,8 +14,8 @@ alias refresh='exec zsh'
 alias bug='pytest -sxv tests --last-failed --pdb'
 alias tnm='/Applications/Postgres.app/Contents/Versions/12/bin/psql -p5432 "tnm"'
 alias mouse='tmux set mouse'
-alias profile='mikeybuild --aiohttp --spec ~/Code/Youversion/service-specs/services/profile/index.yaml --app-path ~/Code/Youversion/ | lolcat'
-
+alias mikey='mikeybuild --aiohttp --spec ~/Code/Youversion/service-specs/services/organizations/index.yaml --app-path ~/Code/Youversion/'
+alias sniff="sniffer -x tests"
 function killport() {
   if [ $# -eq 0 ]
   then
@@ -38,14 +40,14 @@ function redspec() {
         echo "usage: redspec [service-name]"
     else
         cd ..
-        pyenv activate $1
-        redcli $1 service-specs 0.3.1
-        pyenv deactivate
-        cd $1
+        redcli $1 service-specs 2d08efb75dfc0086f77afe80bae059aee83978a4
+        cd -
     fi}
+alias red='redspec organizations'
 
 export PYENV_ROOT="$HOME/.pyenv"
 export PATH="$PYENV_ROOT/bin:$PATH"
+export GIT_PROMPT_EXECUTABLE="haskell"
 eval "$(direnv hook zsh)"
 eval "$(pyenv init --path)"
 eval "$(pyenv init -)"
