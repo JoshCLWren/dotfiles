@@ -1,3 +1,13 @@
+# powerline10k
+if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+fi
+source ~/powerlevel10k/powerlevel10k.zsh-theme
+source ~/.zsh.local/zsh-autosuggestions/zsh-autosuggestions.zsh #10ms
+
+# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
+[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+
 export EDITOR="code"
 path+=('/Users/josh.wren/.local/bin')
 path+=('/usr/local/bin/redcli')
@@ -9,7 +19,7 @@ alias be='bundle exec'
 alias status='git status'
 alias commit='git commit'
 alias add='git add .'
-#alias rspec='bundle exec rspec'
+# #alias rspec='bundle exec rspec'
 alias refresh='exec zsh'
 alias bug='pytest -sxv tests --last-failed --pdb'
 alias tnm='/Applications/Postgres.app/Contents/Versions/12/bin/psql -p5432 "tnm"'
@@ -47,31 +57,43 @@ alias red='redspec organizations'
 
 export PYENV_ROOT="$HOME/.pyenv"
 export PATH="$PYENV_ROOT/bin:$PATH"
-export GIT_PROMPT_EXECUTABLE="haskell"
-eval "$(direnv hook zsh)"
-eval "$(pyenv init --path)"
-eval "$(pyenv init -)"
-eval "$(pyenv virtualenv-init -)"
+source ~/dotfiles-local/evalcache.zsh
 
-# Set up the prompt (with git branch name)
-source ~/dotfiles-local/zsh-git-prompt/zshrc.sh
-PROMPT='%B%F{027}%1~%b%f $(git_super_status) %f%# '
+function load-pyenv() {
+    pyenv init - --no-rehash
+    pyenv init --path
+    pyenv virtualenv-init -
+}
 
+_evalcache direnv hook zsh # 15ms
+_evalcache load-pyenv
+autoload -Uz add-zsh-hook
+add-zsh-hook -D precmd _pyenv_virtualenv_hook
+export PYENV_VIRTUALENV_DISABLE_PROMPT=1
 
-# The next line updates PATH for the Google Cloud SDK.
-if [ -f '/Users/josh.wren/google-cloud-sdk/path.zsh.inc' ]; then . '/Users/josh.wren/google-cloud-sdk/path.zsh.inc'; fi
+# keep these 3 things for the future....
+# # The next line updates PATH for the Google Cloud SDK.
+# if [ -f '/Users/josh.wren/google-cloud-sdk/path.zsh.inc' ]; then . '/Users/josh.wren/google-cloud-sdk/path.zsh.inc'; fi
 
-# The next line enables shell command completion for gcloud.
-if [ -f '/Users/josh.wren/google-cloud-sdk/completion.zsh.inc' ]; then . '/Users/josh.wren/google-cloud-sdk/completion.zsh.inc'; fi
+# # The next line enables shell command completion for gcloud.
+# if [ -f '/Users/josh.wren/google-cloud-sdk/completion.zsh.inc' ]; then . '/Users/josh.wren/google-cloud-sdk/completion.zsh.inc'; fi
 
-source "/usr/local/opt/kube-ps1/share/kube-ps1.sh"
-PS1='$(kube_ps1)'$PS1
-kubeoff
+# source "/usr/local/opt/kube-ps1/share/kube-ps1.sh"
+# PS1='$(kube_ps1)'$PS1
+# kubeoff
 
-eval "$(/Users/josh.wren/code/YouVersion/yv/bin/yv init -)"
-eval $(thefuck --alias)
-alias oops='fuck | lolcat'
+_evalcache yv init -
 alias z='code ~/dotfiles-local/zshrc.local'
 alias you='cd ~/Code/YouVersion/'
 alias nyan='cd ~/go-nyancat && ./go-nyancat | lolcat'
 alias gl="git log --oneline --decorate --graph -10"
+
+function benchmark() {
+    for i in $(seq 1 10)
+        do /usr/bin/time zsh -i -c exit
+    done
+}
+
+[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+
+# source ~/zsh-prompt-benchmark/zsh-prompt-benchmark.plugin.zsh # future benchmarking?
