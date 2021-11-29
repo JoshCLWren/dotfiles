@@ -87,6 +87,7 @@ alias z='code ~/dotfiles-local/zshrc.local'
 alias you='cd ~/Code/YouVersion/'
 alias nyan='cd ~/go-nyancat && ./go-nyancat | lolcat'
 alias gl="git log --oneline --decorate --graph -10"
+alias build="red; mikey; make tests"
 
 function benchmark() {
     for i in $(seq 1 10)
