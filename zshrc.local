@@ -26,6 +26,7 @@ alias tnm='/Applications/Postgres.app/Contents/Versions/12/bin/psql -p5432 "tnm"
 alias mouse='tmux set mouse'
 alias mikey='mikeybuild --aiohttp --spec ~/Code/Youversion/service-specs/services/organizations/index.yaml --app-path ~/Code/Youversion/'
 alias sniff="sniffer -x tests"
+alias gagrc='git add .; git rebase --continue'
 function killport() {
   if [ $# -eq 0 ]
   then
