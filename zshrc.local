@@ -100,7 +100,8 @@ alias nyan='cd ~/go-nyancat && ./go-nyancat | lolcat'
 alias gl="git log --oneline --decorate --graph -10"
 alias build="red; mikey; make tests"
 alias gti='git'
-alias -m=''
+alias git="git --no-pager"
+alias commit="commit -v"
 
 function benchmark() {
     for i in $(seq 1 10)
