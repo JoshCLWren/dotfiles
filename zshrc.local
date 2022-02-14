@@ -27,6 +27,8 @@ alias mouse='tmux set mouse'
 alias mikey='mikeybuild --aiohttp --spec ~/Code/Youversion/service-specs/services/organizations/index.yaml --app-path ~/Code/Youversion/'
 alias sniff="sniffer -x tests"
 alias gagrc='git add .; git rebase --continue'
+alias new='git checkout -b'
+alias ssh='ssh-keygen -R in.thewardro.be'
 function killport() {
   if [ $# -eq 0 ]
   then
@@ -51,9 +53,14 @@ function redspec() {
         echo "usage: redspec [service-name]"
     else
         cd ..
-        redcli $1 service-specs 2d08efb75dfc0086f77afe80bae059aee83978a4
+        redcli $1 service-specs
         cd -
     fi}
+
+function git-cleanup() {
+    git branch --merged | egrep -v "(^\*|master|develop|main)" | xargs -n 1 git branch -d
+}
+
 alias red='redspec organizations'
 
 export PYENV_ROOT="$HOME/.pyenv"
@@ -99,3 +106,10 @@ function benchmark() {
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
 # source ~/zsh-prompt-benchmark/zsh-prompt-benchmark.plugin.zsh # future benchmarking?
+
+
+# The next line updates PATH for the Google Cloud SDK.
+if [ -f '/Users/josh.wren/google-cloud-sdk/path.zsh.inc' ]; then . '/Users/josh.wren/google-cloud-sdk/path.zsh.inc'; fi
+
+# The next line enables shell command completion for gcloud.
+if [ -f '/Users/josh.wren/google-cloud-sdk/completion.zsh.inc' ]; then . '/Users/josh.wren/google-cloud-sdk/completion.zsh.inc'; fi
