@@ -61,6 +61,9 @@ function git-cleanup() {
     git branch --merged | egrep -v "(^\*|master|develop|main)" | xargs -n 1 git branch -d
 }
 
+function git-delete-all-branches() {
+    git branch | egrep -v "(^\*|master|develop|main)" | xargs -n 1 git branch -D
+}
 alias red='redspec organizations'
 
 export PYENV_ROOT="$HOME/.pyenv"
@@ -96,6 +99,7 @@ alias you='cd ~/Code/YouVersion/'
 alias nyan='cd ~/go-nyancat && ./go-nyancat | lolcat'
 alias gl="git log --oneline --decorate --graph -10"
 alias build="red; mikey; make tests"
+alias gti='git'
 
 function benchmark() {
     for i in $(seq 1 10)
