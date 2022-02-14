@@ -102,7 +102,7 @@ alias build="red; mikey; make tests"
 alias gti='git'
 alias git="git --no-pager"
 alias commit="commit -v"
-
+alias -m="-v"
 function benchmark() {
     for i in $(seq 1 10)
         do /usr/bin/time zsh -i -c exit
