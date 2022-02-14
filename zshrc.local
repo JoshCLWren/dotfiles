@@ -64,6 +64,27 @@ function git-cleanup() {
 function git-delete-all-branches() {
     git branch | egrep -v "(^\*|master|develop|main)" | xargs -n 1 git branch -D
 }
+
+function git() {
+  for arg
+  do
+    if [[ $arg == -m* || $arg == -[^-]*m* ]]
+    then
+      annoy_me
+      return 1
+    fi
+  done
+  command git "$@"
+}
+function annoy_me() {
+  echo "Stop using -m, $USER!"
+  echo "You are now in time out."
+  settings=$(stty -g)
+  stty raw
+  sleep 15
+  stty "$settings"
+}
+
 alias red='redspec organizations'
 
 export PYENV_ROOT="$HOME/.pyenv"
@@ -100,9 +121,8 @@ alias nyan='cd ~/go-nyancat && ./go-nyancat | lolcat'
 alias gl="git log --oneline --decorate --graph -10"
 alias build="red; mikey; make tests"
 alias gti='git'
-alias git="git --no-pager"
-alias commit="commit -v"
-alias -m="-v"
+
+
 function benchmark() {
     for i in $(seq 1 10)
         do /usr/bin/time zsh -i -c exit
