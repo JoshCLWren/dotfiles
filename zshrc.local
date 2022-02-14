@@ -68,16 +68,44 @@ function git-delete-all-branches() {
 function git() {
   for arg
   do
-    if [[ $arg == -m* || $arg == -[^-]*m* ]]
+    if [[ $arg == -m* || $arg == . ]]
     then
       sl -a | lolcat
+      echo "Stop using $arg, $USER!"
       return 1
     fi
   done
   command git "$@"
 }
 
-
+# function git {
+#   for arg
+#   do
+#     if [[ $arg == -m* || $arg == -[^-]*m* ]]
+#     then
+#       annoy_me
+#       return 1
+#     fi
+#   done
+#   command git "$@"
+# }
+# function annoy_me {
+#   echo ""
+#   echo ""
+#   echo "Stop using -m, $USER!"
+#   echo ""
+#   echo ""
+#   echo "You are now in a 3 second time out."
+#   echo ""
+#   echo ""
+#   echo "Try that commit again, and this time use the template"
+#   echo ""
+#   echo ""
+#   settings=$(stty -g)
+#   stty raw
+#   sleep 3
+#   stty "$settings"
+# }
 alias red='redspec organizations'
 
 export PYENV_ROOT="$HOME/.pyenv"
