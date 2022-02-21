@@ -7,8 +7,8 @@ source ~/.zsh.local/zsh-autosuggestions/zsh-autosuggestions.zsh #10ms
 
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
-
-export EDITOR="code"
+alias pycharm='open -a pycharm.app'
+export EDITOR=pycharm
 path+=('/Users/josh.wren/.local/bin')
 path+=('/usr/local/bin/redcli')
 path+=('/Users/josh.wren/dotfiles-local/zsh-git-prompt/src/.bin')
@@ -29,6 +29,13 @@ alias sniff="sniffer -x tests"
 alias gagrc='git add .; git rebase --continue'
 alias new='git checkout -b'
 alias ssh='ssh-keygen -R in.thewardro.be'
+alias z='open -a pycharm.app ~/dotfiles-local/zshrc.local'
+alias you='cd ~/Code/YouVersion/'
+alias nyan='cd ~/go-nyancat && ./go-nyancat | lolcat'
+alias gl="git log --oneline --decorate --graph -10"
+alias build="red; mikey; make tests"
+alias gti='git'
+
 function killport() {
   if [ $# -eq 0 ]
   then
@@ -57,6 +64,10 @@ function redspec() {
         cd -
     fi}
 
+function talk() {
+    say -v "Samantha" "$@"
+}
+
 function git-cleanup() {
     git branch --merged | egrep -v "(^\*|master|develop|main)" | xargs -n 1 git branch -d
 }
@@ -71,41 +82,13 @@ function git() {
     if [[ $arg == -m* || $arg == . ]]
     then
       sl -a | lolcat
-      echo "Stop using $arg, $USER!"
+      talk $USER, Stop using bad git practices. You are making Marcus sad.
       return 1
     fi
   done
   command git "$@"
 }
 
-# function git {
-#   for arg
-#   do
-#     if [[ $arg == -m* || $arg == -[^-]*m* ]]
-#     then
-#       annoy_me
-#       return 1
-#     fi
-#   done
-#   command git "$@"
-# }
-# function annoy_me {
-#   echo ""
-#   echo ""
-#   echo "Stop using -m, $USER!"
-#   echo ""
-#   echo ""
-#   echo "You are now in a 3 second time out."
-#   echo ""
-#   echo ""
-#   echo "Try that commit again, and this time use the template"
-#   echo ""
-#   echo ""
-#   settings=$(stty -g)
-#   stty raw
-#   sleep 3
-#   stty "$settings"
-# }
 alias red='redspec organizations'
 
 export PYENV_ROOT="$HOME/.pyenv"
@@ -136,12 +119,7 @@ export PYENV_VIRTUALENV_DISABLE_PROMPT=1
 # kubeoff
 
 _evalcache yv init -
-alias z='code ~/dotfiles-local/zshrc.local'
-alias you='cd ~/Code/YouVersion/'
-alias nyan='cd ~/go-nyancat && ./go-nyancat | lolcat'
-alias gl="git log --oneline --decorate --graph -10"
-alias build="red; mikey; make tests"
-alias gti='git'
+
 
 
 function benchmark() {
