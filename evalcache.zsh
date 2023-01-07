@@ -6,8 +6,18 @@
 # Usage: _evalcache <command> <generation args...>
 # default cache directory
 export ZSH_EVALCACHE_DIR=${ZSH_EVALCACHE_DIR:-"$HOME/.zsh-evalcache"}
+
 function _evalcache() {
-    local cacheFile="$ZSH_EVALCACHE_DIR/init-${1##*/}.sh"
+    local cmdHash="nohash"
+
+    if builtin command -v md5 >/dev/null; then
+        cmdHash=$(echo -n "$*" | md5)
+    elif builtin command -v md5sum >/dev/null; then
+        cmdHash=$(echo -n "$*" | md5sum | cut -d' ' -f1)
+    fi
+
+    local cacheFile="$ZSH_EVALCACHE_DIR/init-${1##*/}-${cmdHash}.sh"
+
     if [ "$ZSH_EVALCACHE_DISABLE" = "true" ]; then
         eval "$("$@")"
     elif [ -s "$cacheFile" ]; then
@@ -23,6 +33,7 @@ function _evalcache() {
         fi
     fi
 }
+
 function _evalcache_clear() {
     rm -i "$ZSH_EVALCACHE_DIR"/init-*.sh
 }
