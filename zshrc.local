@@ -1,9 +1,19 @@
-alias pycharm='open -a pycharm.app'
 export EDITOR="code -w"
-path+=('/Users/josh.wren/.local/bin')
-path+=('/usr/local/bin/redcli')
-path+=('/Users/josh.wren/dotfiles-local/zsh-git-prompt/src/.bin')
+# Add paths to the PATH variable
+path=(
+    "$path[@]"
+    "/opt/homebrew/opt/curl/bin"
+    "/opt/homebrew/opt/unzip/bin"
+    "$(go env GOPATH)/bin"
+    "/Users/josh.wren/.local/bin"
+    "/usr/local/bin/redcli"
+    "/Users/josh.wren/dotfiles-local/zsh-git-prompt/src/.bin"
+)
 
+export USE_GKE_GCLOUD_AUTH_PLUGIN=True
+
+alias pycharm='open -a pycharm.app'
+# alias rm='open -a rubymine.app'
 alias be='bundle exec'
 alias status='git status'
 alias commit='git commit'
@@ -17,7 +27,6 @@ alias mikey='mikeybuild --aiohttp --spec ~/Code/Youversion/service-specs/service
 alias sniff="sniffer -x tests"
 alias gagrc='git add .; git rebase --continue'
 alias new='git checkout -b'
-alias ssh='ssh-keygen -R in.thewardro.be'
 alias z='code  ~/dotfiles-local/dotfiles/zshrc.local'
 alias you='cd ~/Code/YouVersion/'
 alias nyan='cd ~/go-nyancat && ./go-nyancat | lolcat'
@@ -25,8 +34,8 @@ alias gl="git log --oneline --decorate --graph -10"
 alias build="red; mikey; make tests"
 alias gti='git'
 alias bu="brew update"
-alias rebase='git pull origin main --rebase'
-
+alias _rebase='git pull origin main --rebase'
+alias k='kubectl'
 function killport() {
     if [ $# -eq 0 ]; then
         echo "usage: killport [port]\nnote: separate multiple ports with comma"
@@ -59,28 +68,64 @@ function git-delete-all-branches() {
     git branch | egrep -v "(^\*|master|develop|main)" | xargs -n 1 git branch -D
 }
 
+kube-get-pod() {
+    kubectl get pods --no-headers |
+        fzf \
+            --bind="ctrl-r:reload(kubectl get pods --no-headers)" \
+            --header="$P9K_KUBECONTEXT_NAME/$P9K_KUBECONTEXT_NAMESPACE (Press CTRL-R to reload)" \
+            --height=25% |
+        grep -o -E '^[^ ]+'
+}
+
+kube-pod-widget() {
+    local pod=$(kube-get-pod | join-lines)
+    zle reset-prompt
+    LBUFFER+=$pod
+}
+
+join-lines() {
+  local item
+  while read item; do
+    echo -n "${(q)item} "
+  done
+}
+if ! command -v kubectl &>/dev/null; then
+    echo "kubectl is not installed. Please install it."
+    # You can add the installation command or guide here if needed
+fi
+if ! command -v fzf &>/dev/null; then
+    echo "fzf is not installed. Please install it."
+    # You can add the installation command or guide here if needed
+fi
+
+zle -N kube-pod-widget
+bindkey '^k' kube-pod-widget
+alias kxa='kubectl exec $(kube-get-pod) -c api-app -it -- bash'
+alias kx='kubectl exec $(kube-get-pod) -it -- bash'
 alias red='redspec organizations'
 
 source ~/dotfiles-local/dotfiles/evalcache.zsh
+source "$HOME/.cargo/env"
 
 function load-pyenv() {
     pyenv init - --no-rehash
     pyenv init --path
     pyenv virtualenv-init -
 }
-
-_evalcache direnv hook zsh
 _evalcache load-pyenv
+
+# Hook direnv into the shell after pyenv is loaded
+_evalcache direnv hook zsh
 autoload -Uz add-zsh-hook
 add-zsh-hook -D precmd _pyenv_virtualenv_hook
 export PYENV_VIRTUALENV_DISABLE_PROMPT=1
 
-source "/opt/homebrew/opt/kube-ps1/share/kube-ps1.sh"
-PS1='$(kube_ps1)'$PS1
-kubeoff
-eval "$(/Users/joshwren/Code/youversion/yv/bin/yv init -)"
+# source "/opt/homebrew/opt/kube-ps1/share/kube-ps1.sh"
+# PS1='$(kube_ps1)'$PS1
+# kubeoff
+_evalcache /Users/joshwren/Code/youversion/yv/bin/yv init -
 
-[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+source ~/.fzf.zsh
 
 # The next line updates PATH for the Google Cloud SDK.
 if [ -f '/Users/joshwren/google-cloud-sdk/path.zsh.inc' ]; then . '/Users/joshwren/google-cloud-sdk/path.zsh.inc'; fi
@@ -88,8 +133,5 @@ if [ -f '/Users/joshwren/google-cloud-sdk/path.zsh.inc' ]; then . '/Users/joshwr
 # The next line enables shell command completion for gcloud.
 if [ -f '/Users/joshwren/google-cloud-sdk/completion.zsh.inc' ]; then . '/Users/joshwren/google-cloud-sdk/completion.zsh.inc'; fi
 
-eval "$(jump shell)"
-export PYENV_ROOT="$HOME/.pyenv"
-command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"
-eval "$(pyenv init -)"
-eval "$(pyenv virtualenv-init -)"
+_evalcache jump shell
+_evalcache fnm env --use-on-cd
