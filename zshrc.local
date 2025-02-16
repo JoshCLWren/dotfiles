@@ -14,7 +14,7 @@ path=(
 )
 
 # Initialize pyenv properly
-if command -v pyenv 1>/dev/null 2>&1; then
+if [ -f ".python-version" ] && command -v pyenv 1>/dev/null 2>&1 && [ -z "$PYENV_SHELL" ]; then
     eval "$(pyenv init -)"
     eval "$(pyenv virtualenv-init -)"
 fi
