@@ -1,33 +1,40 @@
 # Set PATH at the very beginning
-export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:$PATH"
-
-# Then add other paths
 path=(
-    "$path[@]"
+    # System paths
+    "/usr/local/bin"
+    "/usr/bin"
+    "/bin"
+    "/usr/sbin"
+    "/sbin"
+    "/opt/homebrew/bin"
+    # Additional paths
     "/opt/homebrew/opt/curl/bin"
     "/opt/homebrew/opt/unzip/bin"
     "/Users/josh.wren/.local/bin"
-    "/usr/local/bin/redcli"
     "/Users/josh.wren/dotfiles-local/zsh-git-prompt/src/.bin"
     "$HOME/.cargo/bin"
     "$HOME/bin"
+    "$HOME/code/youversion/openapi/redcli"
+    "$GOPATH/bin"
+    "/opt/homebrew/opt/openjdk/bin"
+    "/Users/joshwren/code/youversion/yv/bin"
+    $path[@]
 )
+# Then add other paths
 
-# Initialize pyenv properly
 if [ -f ".python-version" ] && command -v pyenv 1>/dev/null 2>&1 && [ -z "$PYENV_SHELL" ]; then
     eval "$(pyenv init -)"
     eval "$(pyenv virtualenv-init -)"
 fi
-
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 # Set up Go environment
 export GOROOT="$(brew --prefix golang)/libexec"
 export GOPATH="$HOME/go"
-export PATH="$PATH:$GOPATH/bin"
-
 # Source powerlevel10k
 source /opt/homebrew/share/powerlevel10k/powerlevel10k.zsh-theme
 source /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh
-
 # Editor setting
 export EDITOR="code -w"
 
@@ -82,3 +89,18 @@ export LEFTHOOK=0
 
 # Source cargo environment if it exists
 [ -f "$HOME/.cargo/env" ] && source "$HOME/.cargo/env"
+source "/Users/joshwren/code/youversion/yv/libexec/../completions/yv.zsh"
+_yv_wrapper() {
+  local command="$1"
+  if [ "$#" -gt 0 ]; then
+    shift
+  fi
+
+  case "$command" in
+  shell)
+    eval `yv "sh-$command" "$@"`;;
+  *)
+    command yv "$command" "$@";;
+  esac
+}
+yv=_yv_wrapper
