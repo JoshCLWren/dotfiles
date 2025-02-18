@@ -15,7 +15,7 @@ mkdir -p "$HISTORY_REPO"
 # Initialize git repository if it doesn't exist
 if [ ! -d "$HISTORY_REPO/.git" ]; then
     cd "$HISTORY_REPO"
-    git init
+    git init -b main
     git remote add origin "$GIT_REMOTE"
     echo "Git repository initialized"
 fi
@@ -45,7 +45,7 @@ sync_history() {
     if git status --porcelain | grep -q '^'; then
         git add .
         git commit -m "History backup $(date)"
-        git push origin master
+        git push origin main
         echo "Changes committed and pushed"
     else
         echo "No changes to sync"
@@ -55,7 +55,7 @@ sync_history() {
 # Function to restore history
 restore_history() {
     cd "$HISTORY_REPO"
-    git pull origin master
+    git pull origin main
     
     # Get the most recent history files
     local latest_bash=$(ls -t bash_history_* 2>/dev/null | head -n1)
