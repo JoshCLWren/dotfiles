@@ -41,12 +41,29 @@ backup_history() {
 sync_history() {
     cd "$HISTORY_REPO"
     
+    # Pull latest changes first
+    git pull origin main || {
+        echo "Failed to pull latest changes"
+        return 1
+    }
+    
     # Check if there are any changes
     if git status --porcelain | grep -q '^'; then
         git add .
         git commit -m "History backup $(date)"
-        git push origin main
-        echo "Changes committed and pushed"
+        
+        # Try to push, if it fails, pull and try again
+        if ! git push origin main; then
+            echo "Push failed, trying to pull and push again..."
+            git pull --rebase origin main && git push origin main
+        fi
+        
+        if [ $? -eq 0 ]; then
+            echo "Changes committed and pushed successfully"
+        else
+            echo "Failed to push changes"
+            return 1
+        fi
     else
         echo "No changes to sync"
     fi
