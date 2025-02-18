@@ -42,7 +42,7 @@ sync_history() {
     cd "$HISTORY_REPO"
     
     # Pull latest changes first
-    git pull origin main || {
+    git pull || {
         echo "Failed to pull latest changes"
         return 1
     }
