@@ -10,14 +10,14 @@ path=(
     # Additional paths
     "/opt/homebrew/opt/curl/bin"
     "/opt/homebrew/opt/unzip/bin"
-    "/Users/josh.wren/.local/bin"
-    "/Users/josh.wren/dotfiles-local/zsh-git-prompt/src/.bin"
+    "$HOME/.local/bin"
+    "$HOME/dotfiles-local/zsh-git-prompt/src/.bin"
     "$HOME/.cargo/bin"
     "$HOME/bin"
     "$HOME/code/youversion/openapi/redcli"
     "$GOPATH/bin"
     "/opt/homebrew/opt/openjdk/bin"
-    "/Users/joshwren/code/youversion/yv/bin"
+    "$HOME/code/youversion/yv/bin"
     $path[@]
 )
 # Then add other paths
@@ -26,11 +26,28 @@ if [ -f ".python-version" ] && command -v pyenv 1>/dev/null 2>&1 && [ -z "$PYENV
     eval "$(pyenv init -)"
     eval "$(pyenv virtualenv-init -)"
 fi
+# Lazy load NVM
 export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
-# Set up Go environment
-export GOROOT="$(brew --prefix golang)/libexec"
+nvm() {
+  unfunction nvm
+  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+  [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+  nvm "$@"
+}
+node() {
+  unfunction node
+  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+  node "$@"
+}
+npm() {
+  unfunction npm
+  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+  npm "$@"
+}
+# Set up Go environment (cached)
+if [[ -z "$GOROOT" ]] && command -v brew >/dev/null 2>&1; then
+  export GOROOT="$(brew --prefix golang 2>/dev/null)/libexec"
+fi
 export GOPATH="$HOME/go"
 # Source powerlevel10k
 source /opt/homebrew/share/powerlevel10k/powerlevel10k.zsh-theme
@@ -47,31 +64,35 @@ alias rspec='bundle exec rspec'
 alias refresh='exec zsh'
 alias bug='pytest -sxv tests --last-failed --pdb'
 alias mouse='tmux set mouse'
-alias mikey='mikeybuild --aiohttp --spec ~/Code/Youversion/service-specs/services/organizations/index.yaml --app-path ~/Code/Youversion/'
 alias sniff="sniffer -x tests"
 alias gagrc='git add .; git rebase --continue'
 alias new='git checkout -b'
 alias z='vim  ~/dotfiles/zshrc.local'
-alias you='cd ~/Code/YouVersion/'
 alias nyan='cd ~/go-nyancat && ./go-nyancat | lolcat'
 alias gl="git log --oneline --decorate --graph -10"
-alias build="red; mikey; make tests"
 alias gti='git'
 alias bu="brew update"
 alias _rebase='git pull origin main --rebase'
 alias k='kubectl'
-alias red='redspec organizations'
 
 # Keep your existing functions
 # [Rest of your functions remain the same]
 
-# Initialize jump and fnm
+# Lazy load jump and fnm
 if command -v jump >/dev/null 2>&1; then
-    eval "$(jump shell)"
+  jump() {
+    unfunction jump
+    eval "$(command jump shell)"
+    jump "$@"
+  }
 fi
 
 if command -v fnm >/dev/null 2>&1; then
-    eval "$(fnm env --use-on-cd)"
+  fnm() {
+    unfunction fnm
+    eval "$(command fnm env --use-on-cd)"
+    fnm "$@"
+  }
 fi
 
 # Source Google Cloud SDK
@@ -88,163 +109,12 @@ export LEFTHOOK=0
 
 # Source cargo environment if it exists
 [ -f "$HOME/.cargo/env" ] && source "$HOME/.cargo/env"
-source "/Users/joshwren/code/youversion/yv/libexec/../completions/yv.zsh"
-_yv_wrapper() {
-  local command="$1"
-  if [ "$#" -gt 0 ]; then
-    shift
-  fi
 
-  case "$command" in
-  shell)
-    eval `yv "sh-$command" "$@"`;;
-  *)
-    command yv "$command" "$@";;
-  esac
-}
-yv=_yv_wrapper
+# Source git utilities from separate file
+[[ -f "$HOME/dotfiles/git-large-file-fix" ]] && source "$HOME/dotfiles/git-large-file-fix"
 
-# Function to fix GitHub rejected pushes due to large files
-git_fix_rejected_push() {
-  local branch=${1:-$(git symbolic-ref --short HEAD)}
-
-  echo "Fixing rejected push for branch $branch..."
-
-  # Find all large files in history (>50MB, GitHub's limit)
-  echo "Finding large files exceeding GitHub's 100MB limit..."
-  large_files=$(git rev-list --objects --all |
-    git cat-file --batch-check='%(objecttype) %(objectname) %(objectsize) %(rest)' |
-    sed -n 's/^blob //p' |
-    sort --numeric-sort --key=2 |
-    awk '$2 >= 104857600' |  # 100MB in bytes
-    cut -c 1-12,41-)
-
-  if [[ -z "$large_files" ]]; then
-    echo "No files exceeding GitHub's 100MB limit found."
-    echo "Looking for files exceeding 50MB (GitHub warning threshold)..."
-    large_files=$(git rev-list --objects --all |
-      git cat-file --batch-check='%(objecttype) %(objectname) %(objectsize) %(rest)' |
-      sed -n 's/^blob //p' |
-      sort --numeric-sort --key=2 |
-      awk '$2 >= 52428800' |  # 50MB in bytes
-      cut -c 1-12,41-)
-  fi
-
-  if [[ -n "$large_files" ]]; then
-    echo "The following large files were found in your git history:"
-    echo "$large_files"
-
-    # Extract filenames from the list
-    file_list=$(echo "$large_files" | awk '{print $2}')
-
-    echo "Do you want to remove these files from git history? (y/n)"
-    read reply
-    if [[ "$reply" == "y" || "$reply" == "Y" ]]; then
-      # Backup current branch
-      backup_branch="${branch}_backup_$(date +%Y%m%d%H%M%S)"
-      git branch "$backup_branch"
-      echo "Created backup branch: $backup_branch"
-
-      # Process each large file
-      echo "$file_list" | while read -r file; do
-        if [[ -n "$file" ]]; then
-          echo "Removing $file from git history..."
-          git filter-branch --force --index-filter "git rm -rf --cached --ignore-unmatch \"$file\"" --prune-empty --tag-name-filter cat -- --all
-        fi
-      done
-
-      # Clean up
-      git for-each-ref --format='delete %(refname)' refs/original | git update-ref --stdin
-      git reflog expire --expire=now --all
-      git gc --prune=now --aggressive
-
-      # Add .gitignore entry to prevent re-adding these files
-      echo "$file_list" | while read -r file; do
-        if [[ -n "$file" ]]; then
-          echo "${file}" >> .gitignore
-        fi
-      done
-      git add .gitignore
-      git commit -m "Update .gitignore to prevent re-adding large files"
-
-      echo "All large files have been removed from git history."
-      echo "To push to GitHub, use: git push origin --force --all"
-    else
-      echo "Operation cancelled. Consider using Git LFS for large files: https://git-lfs.github.com/"
-    fi
-  else
-    echo "No large files found in git history. The issue might be related to something else."
-  fi
-}
-
-# Function to detect which files are causing GitHub to reject
-git_detect_rejected_files() {
-  local push_output="$1"
-
-  if [[ -z "$push_output" ]]; then
-    echo "Please provide the GitHub error message as an argument."
-    echo "Usage: git-detect-rejected <\"error message from GitHub\">"
-    return 1
-  fi
-
-  # Extract file paths from GitHub error message
-  local rejected_files=$(echo "$push_output" | grep -o "error: File .* is [0-9.]* [MG]B" | sed -E 's/error: File (.*) is.*/\1/')
-
-  if [[ -n "$rejected_files" ]]; then
-    echo "The following files exceed GitHub's size limits:"
-    echo "$rejected_files"
-
-    echo "Do you want to remove these files from git history? (y/n)"
-    read reply
-    if [[ "$reply" == "y" || "$reply" == "Y" ]]; then
-      for file in $rejected_files; do
-        echo "Removing $file from git history..."
-        git filter-branch --force --index-filter "git rm -rf --cached --ignore-unmatch \"$file\"" --prune-empty --tag-name-filter cat -- --all
-      done
-
-      git for-each-ref --format='delete %(refname)' refs/original | git update-ref --stdin
-      git reflog expire --expire=now --all
-      git gc --prune=now --aggressive
-
-      echo "All rejected files have been removed from git history."
-      echo "To push to GitHub, use: git push origin --force --all"
-    else
-      echo "Operation cancelled."
-    fi
-  else
-    echo "Could not detect specific files from the GitHub error message."
-    echo "Try running git_fix_rejected_push to scan your repository."
-  fi
-}
-
-# Function to parse GitHub error from clipboard
-git_paste_fix() {
-  # Extract the rejected file paths from the clipboard
-  local clipboard=$(pbpaste)
-  git_detect_rejected_files "$clipboard"
-}
-
-# Add aliases
-alias git-detect-rejected='git_detect_rejected_files'
-alias git-paste-fix='git_paste_fix'
-alias gdr='git_detect_rejected_files'
-alias gpf='git_paste_fix'
 export DOCKER_HOST="unix://${HOME}/.colima/default/docker.sock"
 
-redcli-auto() {
-    DOCKER_DEFAULT_PLATFORM=linux/amd64 docker run \
-        --mount type=bind,source="$(pwd)",destination=/hostdir,consistency=cached \
-        --rm us-central1-docker.pkg.dev/yv-registry-prod-0e53/yv-production/lifechurch/youversion/red/openapi/openapi:${3:-latest} \
-        /red-openapi/bin/red-openapi generate-python-project \
-        --template-path /red-openapi \
-        --out /hostdir/generated \
-        --spec /hostdir/"$2"/services/"$1"/index.yaml \
-        --remove-refs && \
-    pushd generated/python/"yv-$1" > /dev/null && \
-    pip uninstall -y "yv-$1" 2>/dev/null || true && \
-    pip install . && \
-    popd > /dev/null
-}
 
 function fix_colima_docker() {
   echo "🔍 Checking DOCKER_HOST..."
@@ -286,4 +156,5 @@ function fix_colima_docker() {
   echo "❌ Docker still not responding after restart."
   return 1
 }
-source /Users/joshwren/code/youversion/content/get-content-cron-logs.sh
+# Source work-specific configuration
+[[ -f "$HOME/dotfiles/work.zsh" ]] && source "$HOME/dotfiles/work.zsh"
