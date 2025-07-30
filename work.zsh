@@ -40,4 +40,11 @@ yv=_yv_wrapper
 
 # Source work-specific completions and scripts
 [[ -f "$HOME/code/youversion/yv/libexec/../completions/yv.zsh" ]] && source "$HOME/code/youversion/yv/libexec/../completions/yv.zsh"
-[[ -f "$HOME/code/youversion/content/get-content-cron-logs.sh" ]] && source "$HOME/code/youversion/content/get-content-cron-logs.sh"
+# Lazy load content cron logs script
+if [[ -f "$HOME/code/youversion/content/get-content-cron-logs.sh" ]]; then
+  get_content_cron_logs() {
+    unfunction get_content_cron_logs
+    source "$HOME/code/youversion/content/get-content-cron-logs.sh"
+    get_content_cron_logs "$@"
+  }
+fi
