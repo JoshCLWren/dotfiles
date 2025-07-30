@@ -1,0 +1,158 @@
+# Enhanced Git large file handling functions
+
+# Function to fix GitHub rejected pushes due to large files
+git_fix_rejected_push() {
+  local branch=${1:-$(git symbolic-ref --short HEAD)}
+
+  echo "Fixing rejected push for branch $branch..."
+
+  # Find all large files in history (>50MB, GitHub's limit)
+  echo "Finding large files exceeding GitHub's 100MB limit..."
+  large_files=$(git rev-list --objects --all |
+    git cat-file --batch-check='%(objecttype) %(objectname) %(objectsize) %(rest)' |
+    sed -n 's/^blob //p' |
+    sort --numeric-sort --key=2 |
+    awk '$2 >= 104857600' |  # 100MB in bytes
+    cut -c 1-12,41-)
+
+  if [[ -z "$large_files" ]]; then
+    echo "No files exceeding GitHub's 100MB limit found."
+    echo "Looking for files exceeding 50MB (GitHub warning threshold)..."
+    large_files=$(git rev-list --objects --all |
+      git cat-file --batch-check='%(objecttype) %(objectname) %(objectsize) %(rest)' |
+      sed -n 's/^blob //p' |
+      sort --numeric-sort --key=2 |
+      awk '$2 >= 52428800' |  # 50MB in bytes
+      cut -c 1-12,41-)
+  fi
+
+  if [[ -n "$large_files" ]]; then
+    echo "The following large files were found in your git history:"
+    echo "$large_files"
+
+    # Extract filenames from the list
+    file_list=$(echo "$large_files" | awk '{print $2}')
+
+    read -p "Do you want to remove these files from git history? (y/n) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+      # Backup current branch
+      backup_branch="${branch}_backup_$(date +%Y%m%d%H%M%S)"
+      git branch "$backup_branch"
+      echo "Created backup branch: $backup_branch"
+
+      # Create a temp directory for BFG repo mirror if BFG is used
+      if command -v bfg &> /dev/null; then
+        tmp_dir=$(mktemp -d)
+        echo "Created temporary directory for BFG operations: $tmp_dir"
+      fi
+
+      # Remove each large file from history
+      echo "$file_list" | while read -r file; do
+        if [[ -n "$file" ]]; then
+          echo "Removing $file from git history..."
+
+          # Check if BFG is installed
+          if command -v bfg &> /dev/null; then
+            echo "Using BFG for faster cleanup..."
+            # Create a mirror to work with BFG
+            orig_dir=$(pwd)
+            cd "$tmp_dir"
+            git clone --mirror "$orig_dir/.git" repo-mirror.git
+            cd repo-mirror.git
+            bfg --delete-files "${file##*/}"  # Use basename of file
+            git reflog expire --expire=now --all
+            git gc --prune=now --aggressive
+            cd "$orig_dir"
+            mv "$tmp_dir/repo-mirror.git/.git/"* .git/
+            rm -rf "$tmp_dir/repo-mirror.git"
+          else
+            echo "Using git filter-branch (consider installing BFG for faster cleanup)..."
+            git filter-branch --force --index-filter "git rm -rf --cached --ignore-unmatch $file" --prune-empty --tag-name-filter cat -- --all
+            git for-each-ref --format='delete %(refname)' refs/original | git update-ref --stdin
+            git reflog expire --expire=now --all
+            git gc --prune=now --aggressive
+          fi
+        fi
+      done
+
+      # Clean up tmp_dir if it was created
+      if command -v bfg &> /dev/null; then
+        rm -rf "$tmp_dir"
+        echo "Cleaned up temporary directory"
+      fi
+
+      # Add .gitignore entry to prevent re-adding these files
+      echo "Updating .gitignore to prevent re-adding large files..."
+      echo "$file_list" | while read -r file; do
+        if [[ -n "$file" ]]; then
+          echo "${file}" >> .gitignore
+        fi
+      done
+      git add .gitignore
+      git commit -m "Update .gitignore to prevent re-adding large files"
+
+      # Make sure local references are updated
+      git update-ref -d refs/original/refs/heads/$branch
+      git update-ref -d refs/original/refs/remotes/origin/$branch
+      git reflog expire --expire=now --all
+      git gc --prune=now --aggressive
+
+      echo "All large files have been removed from git history."
+      echo "To push to GitHub, use: git push origin --force --all"
+    else
+      echo "Operation cancelled. Consider using Git LFS for large files: https://git-lfs.github.com/"
+    fi
+  else
+    echo "No large files found in git history. The issue might be related to something else."
+  fi
+}
+
+# Add this function to detect which files are causing GitHub to reject
+git_detect_rejected_files() {
+  local push_output="$1"
+
+  if [[ -z "$push_output" ]]; then
+    echo "Please provide the GitHub error message as an argument."
+    echo "Usage: git-detect-rejected <\"error message from GitHub\">"
+    return 1
+  fi
+
+  # Extract file paths from GitHub error message
+  local rejected_files=$(echo "$push_output" | grep -o "error: File .* is [0-9.]* [MG]B" | sed -E 's/error: File (.*) is.*/\1/')
+
+  if [[ -n "$rejected_files" ]]; then
+    echo "The following files exceed GitHub's size limits:"
+    echo "$rejected_files"
+
+    read -p "Do you want to remove these files from git history? (y/n) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+      for file in $rejected_files; do
+        echo "Removing $file from git history..."
+        git_remove_large_files "$file"
+      done
+
+      echo "All rejected files have been removed from git history."
+      echo "To push to GitHub, use: git push origin --force --all"
+    else
+      echo "Operation cancelled."
+    fi
+  else
+    echo "Could not detect specific files from the GitHub error message."
+    echo "Try running git_fix_rejected_push to scan your repository."
+  fi
+}
+
+# Alias for direct paste of GitHub error message
+git_paste_fix() {
+  # Extract the rejected file paths from the clipboard
+  local clipboard=$(pbpaste)
+  git_detect_rejected_files "$clipboard"
+}
+
+# Add new aliases
+alias git-detect-rejected='git_detect_rejected_files'
+alias git-paste-fix='git_paste_fix'
+alias gdr='git_detect_rejected_files'
+alias gpf='git_paste_fix'
