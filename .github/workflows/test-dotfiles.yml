@@ -1,0 +1,71 @@
+name: Test Dotfiles
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup environment
+        run: |
+          # Install zsh if not present (should be available on macOS)
+          which zsh || brew install zsh
+          
+          # Make test runner executable
+          chmod +x ./test_dotfiles.zsh
+          
+      - name: Run basic functionality tests
+        run: ./test_dotfiles.zsh --test basic_functionality
+        
+      - name: Run compatibility tests
+        run: ./test_dotfiles.zsh --test compatibility
+        
+      - name: Run performance benchmarks
+        run: ./test_dotfiles.zsh --benchmark
+        
+      - name: Run full test suite
+        run: ./test_dotfiles.zsh --verbose
+        
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-macos
+          path: test_results.log
+
+  test-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Install zsh
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zsh
+          
+      - name: Setup environment
+        run: |
+          # Make test runner executable
+          chmod +x ./test_dotfiles.zsh
+          
+      - name: Run compatibility tests (Linux)
+        shell: zsh {0}
+        run: ./test_dotfiles.zsh --test compatibility
+        
+      - name: Run basic tests (Linux)
+        shell: zsh {0}
+        run: ./test_dotfiles.zsh --test basic_functionality
+        
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-linux
+          path: test_results.log

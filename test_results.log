@@ -1,0 +1,65 @@
+=== Dotfiles Test Run Started at Wed Jul 30 13:32:43 CDT 2025 ===
+[DEBUG] Dotfiles directory: /Users/joshwren/dotfiles
+[DEBUG] Test directory: /Users/joshwren/dotfiles/tests
+[DEBUG] Zsh version: 5.9
+[DEBUG] Platform: Darwin
+[DEBUG] Test environment prepared
+System Information:
+  OS: Darwin 24.5.0
+  Architecture: arm64
+  Shell: /bin/zsh (zsh version: 5.9)
+  User: joshwren
+  Home: /Users/joshwren
+  Terminal: xterm-256color
+  Locale: LANG="en_US.UTF-8"
+
+Environment:
+  PATH entries:       62
+  GOPATH: /Users/joshwren/go
+  GOROOT: /opt/homebrew/opt/go/libexec
+  NVM_DIR: /Users/joshwren/.nvm
+  DOCKER_HOST: unix:///Users/joshwren/.colima/default/docker.sock
+
+Dotfiles:
+  Directory: /Users/joshwren/dotfiles
+  Config file: -rw-r--r--@ 1 joshwren  staff  4206 Jul 30 13:15 /Users/joshwren/dotfiles/zshrc.local
+  Work config: -rw-r--r--@ 1 joshwren  staff  1551 Jul 30 13:14 /Users/joshwren/dotfiles/work.zsh
+  Git utilities: -rw-r--r--@ 1 joshwren  staff  5843 Mar  2 16:57 /Users/joshwren/dotfiles/git-large-file-fix
+[2025-07-30 13:32:43] Starting integration tests
+=== INTEGRATION TESTS ===
+Testing git aliases functionality...
+PASS: 'add' alias works (git add .)
+PASS: 'status' alias works (git status)
+PASS: 'commit' alias works (git commit)
+PASS: 'gl' alias works (git log --oneline --decorate --graph)
+PASS: Git aliases integration test complete
+Testing work aliases conditional loading...
+PASS: Work aliases loaded when work.zsh exists
+PASS: Work alias 'mikey' correctly configured
+Testing lazy loading integration...
+PASS: NVM is lazy loaded (function defined)
+PASS: NVM lazy loading activates correctly (version: 0.39.7)
+PASS: Node is lazy loaded (function defined)
+Testing git utilities integration...
+PASS: git_fix_rejected_push function available
+PASS: git_detect_rejected_files function available
+PASS: Git utilities integration test complete
+Testing Docker functions integration...
+PASS: fix_colima_docker function available
+PASS: DOCKER_HOST environment variable set (unix:///Users/joshwren/.colima/default/docker.sock)
+Testing Kubernetes integration...
+PASS: 'k' alias points to kubectl
+PASS: Kubernetes aliases configured
+Testing PATH integration...
+PASS: All essential tools found in PATH
+PASS: Custom path '/Users/joshwren/.cargo/bin' in PATH
+PASS: Custom path '/Users/joshwren/bin' in PATH
+Testing environment variable integration...
+PASS: Go environment variables set (GOPATH: /Users/joshwren/go, GOROOT: /opt/homebrew/opt/go/libexec)
+PASS: Environment variable USE_GKE_GCLOUD_AUTH_PLUGIN set
+PASS: Environment variable LEFTHOOK set
+PASS: Environment variable DOCKER_HOST set
+✓ All integration tests passed
+[2025-07-30 13:32:44] integration tests PASSED in 1s
+[2025-07-30 13:32:44] TEST RUN COMPLETED SUCCESSFULLY
+[DEBUG] Cleaning up test artifacts...
