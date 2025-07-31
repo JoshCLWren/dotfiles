@@ -3,7 +3,7 @@
 
 test_essential_aliases() {
   echo "Testing essential aliases..."
-  local aliases=(status add commit new gl k gti bu refresh)
+  local aliases=(status add commit new gl k gti bu refresh j)
   local failed=0
   
   for alias_name in $aliases; do

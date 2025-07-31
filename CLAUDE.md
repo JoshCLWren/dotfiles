@@ -23,6 +23,14 @@ This is a personal dotfiles repository for zsh shell configuration and developme
 
 ## Development Commands
 
+### Testing
+**IMPORTANT**: Always run tests after making changes to shell configuration:
+```bash
+./test_dotfiles.zsh                    # Run all tests
+./test_dotfiles.zsh --test basic_functionality  # Test core functionality
+./test_dotfiles.zsh --verbose          # Detailed test output
+```
+
 ### Zsh Git Prompt (Haskell version)
 ```bash
 cd zsh-git-prompt/
