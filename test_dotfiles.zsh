@@ -179,8 +179,24 @@ prepare_test_environment() {
       # Try to source just the essential parts manually
       log_verbose "Attempting to load essential functions manually"
       
-      # Extract and source just the function definitions
-      grep -E "^(alias|function|[a-zA-Z_][a-zA-Z0-9_]*\(\))" "$DOTFILES_DIR/zshrc.local" > "$temp_file.funcs" 2>/dev/null || true
+      # Create a more comprehensive extraction that handles conditional blocks
+      {
+        # Extract aliases
+        grep "^alias " "$DOTFILES_DIR/zshrc.local" 2>/dev/null || true
+        
+        # Extract standalone function definitions
+        grep -E "^[a-zA-Z_][a-zA-Z0-9_]*\(\)" "$DOTFILES_DIR/zshrc.local" 2>/dev/null || true
+        
+        # For the jump/j functions, we need to handle the conditional block
+        # Extract the entire if block for jump commands
+        sed -n '/^if command -v jump/,/^fi/p' "$DOTFILES_DIR/zshrc.local" 2>/dev/null || true
+        
+        # Extract the entire if block for fnm commands  
+        sed -n '/^if command -v fnm/,/^fi/p' "$DOTFILES_DIR/zshrc.local" 2>/dev/null || true
+        
+      } > "$temp_file.funcs"
+      
+      # Source the extracted functions
       source "$temp_file.funcs" 2>/dev/null || true
       
       # Source git utilities
