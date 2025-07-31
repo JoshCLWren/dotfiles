@@ -5,7 +5,8 @@
 set -e
 
 # Configuration
-DOTFILES_DIR="$HOME/dotfiles"
+# Use the directory where this script is located
+DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 TEST_DIR="$DOTFILES_DIR/tests"
 LOG_FILE="$DOTFILES_DIR/test_results.log"
 
