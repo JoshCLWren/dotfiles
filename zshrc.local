@@ -105,9 +105,15 @@ alias k='kubectl'
 # Lazy load jump and fnm
 if command -v jump >/dev/null 2>&1; then
   jump() {
-    unfunction jump
+    unfunction jump j 2>/dev/null
     eval "$(command jump shell)"
     jump "$@"
+  }
+  # Create j alias that also lazy loads
+  j() {
+    unfunction jump j 2>/dev/null
+    eval "$(command jump shell)"
+    j "$@"
   }
 fi
 
