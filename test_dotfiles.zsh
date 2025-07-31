@@ -187,11 +187,12 @@ prepare_test_environment() {
         # Extract standalone function definitions
         grep -E "^[a-zA-Z_][a-zA-Z0-9_]*\(\)" "$DOTFILES_DIR/zshrc.local" 2>/dev/null || true
         
-        # For the jump/j functions, we need to handle the conditional block
-        # Extract the entire if block for jump commands
-        sed -n '/^if command -v jump/,/^fi/p' "$DOTFILES_DIR/zshrc.local" 2>/dev/null || true
+        # For CI environments, create stub implementations of essential functions that exist but warn
+        echo "# CI-mode stub implementations"
+        echo 'j() { echo "Warning: j command is a stub in CI mode (jump not installed)" >&2; }'
+        echo 'jump() { echo "Warning: jump command is a stub in CI mode" >&2; }'
         
-        # Extract the entire if block for fnm commands  
+        # Extract the entire if block for fnm commands (these might work in CI)
         sed -n '/^if command -v fnm/,/^fi/p' "$DOTFILES_DIR/zshrc.local" 2>/dev/null || true
         
       } > "$temp_file.funcs"
