@@ -164,15 +164,27 @@ prepare_test_environment() {
   if [[ -n "$CI" || -n "$GITHUB_ACTIONS" ]]; then
     log_verbose "CI environment detected, creating test-friendly config"
     
-    # Create a modified version that skips platform-specific sources
-    sed 's|^source /opt/homebrew|# CI-SKIP: source /opt/homebrew|g' "$DOTFILES_DIR/zshrc.local" > "$temp_file"
+    # Create a modified version that skips platform-specific sources but keeps core functionality
+    sed -e 's|^source /opt/homebrew|# CI-SKIP: source /opt/homebrew|g' \
+        -e 's|^export DOCKER_HOST=.*colima.*|# CI-SKIP: export DOCKER_HOST (colima not available)|g' \
+        "$DOTFILES_DIR/zshrc.local" > "$temp_file"
     
-    # Source the modified version
-    if source "$temp_file" 2>/dev/null; then
+    # Source the modified version with more detailed error handling
+    if source "$temp_file" 2>"$temp_file.err"; then
       print_success "Successfully sourced zshrc.local (CI mode)"
     else
-      print_warning "Partial sourcing of zshrc.local (some features may be unavailable)"
-      log_verbose "Config sourcing had issues but continuing with tests"
+      print_warning "Some config lines failed, but continuing with core functionality"
+      log_verbose "Config errors: $(cat "$temp_file.err" 2>/dev/null || echo 'unknown')"
+      
+      # Try to source just the essential parts manually
+      log_verbose "Attempting to load essential functions manually"
+      
+      # Extract and source just the function definitions
+      grep -E "^(alias|function|[a-zA-Z_][a-zA-Z0-9_]*\(\))" "$DOTFILES_DIR/zshrc.local" > "$temp_file.funcs" 2>/dev/null || true
+      source "$temp_file.funcs" 2>/dev/null || true
+      
+      # Source git utilities
+      [[ -f "$DOTFILES_DIR/git-large-file-fix" ]] && source "$DOTFILES_DIR/git-large-file-fix" 2>/dev/null || true
     fi
   else
     # Normal local testing
@@ -186,6 +198,8 @@ prepare_test_environment() {
   
   # Cleanup
   [[ -f "$temp_file" ]] && rm -f "$temp_file"
+  [[ -f "$temp_file.err" ]] && rm -f "$temp_file.err"
+  [[ -f "$temp_file.funcs" ]] && rm -f "$temp_file.funcs"
   
   log_verbose "Test environment prepared"
 }
