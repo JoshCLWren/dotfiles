@@ -170,12 +170,20 @@ test_docker_functions_integration() {
   if type fix_colima_docker >/dev/null 2>&1; then
     echo "PASS: fix_colima_docker function available"
     
-    # Test DOCKER_HOST is set
-    if [[ -n "$DOCKER_HOST" ]]; then
-      echo "PASS: DOCKER_HOST environment variable set ($DOCKER_HOST)"
+    # Test DOCKER_HOST is set (CI-aware)
+    if [[ -n "$CI" || -n "$GITHUB_ACTIONS" ]]; then
+      if [[ -n "$DOCKER_HOST" ]]; then
+        echo "PASS: DOCKER_HOST environment variable set in CI ($DOCKER_HOST)"
+      else
+        echo "INFO: DOCKER_HOST not set in CI (expected for Docker-less CI environments)"
+      fi
     else
-      echo "FAIL: DOCKER_HOST environment variable not set"
-      return 1
+      if [[ -n "$DOCKER_HOST" ]]; then
+        echo "PASS: DOCKER_HOST environment variable set ($DOCKER_HOST)"
+      else
+        echo "FAIL: DOCKER_HOST environment variable not set"
+        return 1
+      fi
     fi
   else
     echo "FAIL: fix_colima_docker function missing"

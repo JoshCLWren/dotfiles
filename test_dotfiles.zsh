@@ -2,7 +2,7 @@
 # Comprehensive dotfiles test runner
 # Usage: ./test_dotfiles.zsh [--verbose] [--test-name]
 
-set -e
+# Note: Removed set -e to allow proper error handling in test suites
 
 # Configuration
 # Use the directory where this script is located
@@ -157,54 +157,29 @@ run_preflight_checks() {
 prepare_test_environment() {
   print_section "Preparing Test Environment"
   
-  # Create a test-friendly environment by sourcing config with error handling
-  local temp_file=$(mktemp)
-  
-  # Copy zshrc.local but comment out problematic lines for CI
   if [[ -n "$CI" || -n "$GITHUB_ACTIONS" ]]; then
-    log_verbose "CI environment detected, creating test-friendly config"
+    log_verbose "CI environment detected, using best-effort config loading"
     
-    # Create a modified version that skips platform-specific sources but keeps core functionality
+    # In CI, just try to source what we can without failing the entire test run
+    # Comment out problematic lines that are known to fail in CI
+    local temp_file=$(mktemp)
     sed -e 's|^source /opt/homebrew|# CI-SKIP: source /opt/homebrew|g' \
         -e 's|^export DOCKER_HOST=.*colima.*|# CI-SKIP: export DOCKER_HOST (colima not available)|g' \
         "$DOTFILES_DIR/zshrc.local" > "$temp_file"
     
-    # Source the modified version with more detailed error handling
-    if source "$temp_file" 2>"$temp_file.err"; then
-      print_success "Successfully sourced zshrc.local (CI mode)"
+    # Source with best effort - don't fail if some things don't work
+    if source "$temp_file" 2>/dev/null; then
+      print_success "Sourced zshrc.local (CI mode)"
     else
-      print_warning "Some config lines failed, but continuing with core functionality"
-      log_verbose "Config errors: $(cat "$temp_file.err" 2>/dev/null || echo 'unknown')"
-      
-      # Try to source just the essential parts manually
-      log_verbose "Attempting to load essential functions manually"
-      
-      # Create a more comprehensive extraction that handles conditional blocks
-      {
-        # Extract aliases
-        grep "^alias " "$DOTFILES_DIR/zshrc.local" 2>/dev/null || true
-        
-        # Extract standalone function definitions
-        grep -E "^[a-zA-Z_][a-zA-Z0-9_]*\(\)" "$DOTFILES_DIR/zshrc.local" 2>/dev/null || true
-        
-        # For CI environments, create stub implementations of essential functions that exist but warn
-        echo "# CI-mode stub implementations"
-        echo 'j() { echo "Warning: j command is a stub in CI mode (jump not installed)" >&2; }'
-        echo 'jump() { echo "Warning: jump command is a stub in CI mode" >&2; }'
-        
-        # Extract the entire if block for fnm commands (these might work in CI)
-        sed -n '/^if command -v fnm/,/^fi/p' "$DOTFILES_DIR/zshrc.local" 2>/dev/null || true
-        
-      } > "$temp_file.funcs"
-      
-      # Source the extracted functions
-      source "$temp_file.funcs" 2>/dev/null || true
-      
-      # Source git utilities
-      [[ -f "$DOTFILES_DIR/git-large-file-fix" ]] && source "$DOTFILES_DIR/git-large-file-fix" 2>/dev/null || true
+      print_warning "Partial config loading in CI - some features unavailable"
     fi
+    
+    # Always ensure git utilities are available
+    [[ -f "$DOTFILES_DIR/git-large-file-fix" ]] && source "$DOTFILES_DIR/git-large-file-fix" 2>/dev/null
+    
+    rm -f "$temp_file"
   else
-    # Normal local testing
+    # Normal local testing - full functionality expected
     if source "$DOTFILES_DIR/zshrc.local" 2>/dev/null; then
       print_success "Successfully sourced zshrc.local"
     else
@@ -212,11 +187,6 @@ prepare_test_environment() {
       exit 1
     fi
   fi
-  
-  # Cleanup
-  [[ -f "$temp_file" ]] && rm -f "$temp_file"
-  [[ -f "$temp_file.err" ]] && rm -f "$temp_file.err"
-  [[ -f "$temp_file.funcs" ]] && rm -f "$temp_file.funcs"
   
   log_verbose "Test environment prepared"
 }
@@ -248,7 +218,13 @@ run_test_suite() {
       *) func_name="run_${test_name}_tests" ;;
     esac
     
-    if eval "$func_name" 2>&1 | tee -a "$LOG_FILE"; then
+    # Capture both output and exit code properly
+    local test_output
+    test_output=$(eval "$func_name" 2>&1)
+    local test_exit_code=$?
+    echo "$test_output" | tee -a "$LOG_FILE"
+    
+    if [[ $test_exit_code -eq 0 ]]; then
       local end_time=$(date +%s)
       local duration=$((end_time - start_time))
       print_success "$test_name tests completed in ${duration}s"
