@@ -38,6 +38,12 @@ _yv_wrapper() {
 }
 yv=_yv_wrapper
 
+# Bible Import toolkit
+bi-activate() { eval "$(pyenv init -)"; eval "$(pyenv virtualenv-init -)"; pyenv shell bi; echo "Bible Import Toolkit environment activated."; }
+alias bi-edit="code /Users/joshwren/code/youversion/bi-tools"
+
+# GitLab token managed via .envrc files in project directories
+
 # Source work-specific completions and scripts
 [[ -f "$HOME/code/youversion/yv/libexec/../completions/yv.zsh" ]] && source "$HOME/code/youversion/yv/libexec/../completions/yv.zsh"
 # Lazy load content cron logs script
