@@ -1,3 +1,4 @@
+# Loading zshrc.local...
 # Powerlevel10k instant prompt - must be at the top
 if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
@@ -39,7 +40,10 @@ path=(
 )
 # Then add other paths
 
-if [ -f ".python-version" ] && command -v pyenv 1>/dev/null 2>&1 && [ -z "$PYENV_SHELL" ]; then
+# Initialize pyenv if available
+if command -v pyenv 1>/dev/null 2>&1; then
+    # Ensure no existing pyenv function conflicts
+    unset -f pyenv 2>/dev/null || true
     eval "$(pyenv init -)"
     eval "$(pyenv virtualenv-init -)"
 fi
@@ -85,7 +89,7 @@ alias status='git status'
 alias commit='git commit'
 alias add='git add .'
 alias rspec='bundle exec rspec'
-alias refresh='exec zsh'
+alias refresh='source ~/.zshrc'
 alias bug='pytest -sxv tests --last-failed --pdb'
 alias mouse='tmux set mouse'
 alias sniff="sniffer -x tests"

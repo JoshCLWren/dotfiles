@@ -23,7 +23,7 @@ alias status='git status'
 alias commit='git commit'
 alias add='git add .'
 alias rspec='bundle exec rspec'
-alias refresh='exec zsh'
+alias refresh='source ~/.zshrc'
 alias bug='pytest -sxv tests --last-failed --pdb'
 alias mouse='tmux set mouse'
 alias mikey='mikeybuild --aiohttp --spec ~/Code/Youversion/service-specs/services/organizations/index.yaml --app-path ~/Code/Youversion/'
@@ -110,10 +110,11 @@ alias red='redspec organizations'
 source ~/dotfiles/evalcache.zsh
 source "$HOME/.cargo/env"
 
-function load-pyenv() {
-    pyenv virtualenv-init -
-}
-_evalcache load-pyenv
+# Pyenv initialization moved to main zshrc.local
+# function load-pyenv() {
+#     pyenv virtualenv-init -
+# }
+# _evalcache load-pyenv
 
 # Hook direnv into the shell after pyenv is loaded
 _evalcache direnv hook zsh
