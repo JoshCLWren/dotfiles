@@ -28,6 +28,7 @@ path=(
     "/opt/homebrew/opt/icu4c@77/bin"
     "/opt/homebrew/opt/icu4c@77/sbin"
     "$HOME/.codeium/windsurf/bin"
+    "$HOME/.nvm/versions/node/v23.8.0/bin"
     "$HOME/.local/bin"
     "$HOME/dotfiles-local/zsh-git-prompt/src/.bin"
     "$HOME/.cargo/bin"
@@ -106,27 +107,38 @@ alias k='kubectl'
 # Keep your existing functions
 # [Rest of your functions remain the same]
 
-# Lazy load jump and fnm
+# Load evalcache for performance
+[[ -f "$HOME/dotfiles/evalcache.zsh" ]] && source "$HOME/dotfiles/evalcache.zsh"
+
+# Lazy load jump and fnm using evalcache
 if command -v jump >/dev/null 2>&1; then
-  jump() {
-    unfunction jump j 2>/dev/null
-    eval "$(command jump shell)"
-    jump "$@"
-  }
-  # Create j alias that also lazy loads
-  j() {
-    unfunction jump j 2>/dev/null
-    eval "$(command jump shell)"
-    j "$@"
-  }
+  if command -v _evalcache >/dev/null 2>&1; then
+    _evalcache jump shell
+  else
+    jump() {
+      unfunction jump j 2>/dev/null
+      eval "$(command jump shell)"
+      jump "$@"
+    }
+    # Create j alias that also lazy loads
+    j() {
+      unfunction jump j 2>/dev/null
+      eval "$(command jump shell)"
+      j "$@"
+    }
+  fi
 fi
 
 if command -v fnm >/dev/null 2>&1; then
-  fnm() {
-    unfunction fnm
-    eval "$(command fnm env --use-on-cd)"
-    fnm "$@"
-  }
+  if command -v _evalcache >/dev/null 2>&1; then
+    _evalcache fnm env --use-on-cd
+  else
+    fnm() {
+      unfunction fnm
+      eval "$(command fnm env --use-on-cd)"
+      fnm "$@"
+    }
+  fi
 fi
 
 # Source Google Cloud SDK
@@ -146,6 +158,25 @@ export LEFTHOOK=0
 
 # Source git utilities from separate file
 [[ -f "$HOME/dotfiles/git-large-file-fix" ]] && source "$HOME/dotfiles/git-large-file-fix"
+
+# Load fzf key bindings and completion
+[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+
+# Hook direnv into the shell after pyenv is loaded
+if command -v _evalcache >/dev/null 2>&1; then
+  _evalcache direnv hook zsh
+elif command -v direnv >/dev/null 2>&1; then
+  eval "$(direnv hook zsh)"
+fi
+
+# Initialize yv if available
+if [ -f "/Users/joshwren/Code/youversion/yv/bin/yv" ]; then
+  if command -v _evalcache >/dev/null 2>&1; then
+    _evalcache /Users/joshwren/Code/youversion/yv/bin/yv init -
+  else
+    eval "$(/Users/joshwren/Code/youversion/yv/bin/yv init -)"
+  fi
+fi
 
 export DOCKER_HOST="unix://${HOME}/.colima/default/docker.sock"
 
