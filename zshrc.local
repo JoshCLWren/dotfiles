@@ -37,9 +37,8 @@ path=(
     "$HOME/code/youversion/bi-tools"
     "$GOPATH/bin"
     "$HOME/code/youversion/yv/bin"
-    $path[@]
 )
-# Then add other paths
+# Note: Removed $path[@] to prevent duplicates. PATH deduplication happens at the end.
 
 # Initialize pyenv if available
 if command -v pyenv 1>/dev/null 2>&1; then
@@ -103,6 +102,7 @@ alias gti='git'
 alias bu="brew update"
 alias _rebase='git pull origin main --rebase'
 alias k='kubectl'
+alias gemini-cli='gemini'
 
 # Keep your existing functions
 # [Rest of your functions remain the same]
@@ -180,6 +180,59 @@ fi
 
 export DOCKER_HOST="unix://${HOME}/.colima/default/docker.sock"
 
+# Background update check for brew and npm
+function check_package_updates() {
+  local cache_file="$HOME/.cache/package_updates_check"
+  local cache_duration=$((24 * 60 * 60)) # 24 hours in seconds
+
+  # Create cache directory if it doesn't exist
+  mkdir -p "$(dirname "$cache_file")"
+
+  # Check if cache file exists and is recent
+  if [[ -f "$cache_file" ]]; then
+    local last_check=$(stat -f %m "$cache_file" 2>/dev/null || echo 0)
+    local current_time=$(date +%s)
+    local time_diff=$((current_time - last_check))
+
+    if [[ $time_diff -lt $cache_duration ]]; then
+      return 0
+    fi
+  fi
+
+  # Run checks in background
+  {
+    local updates=""
+
+    # Check brew updates
+    if command -v brew >/dev/null 2>&1; then
+      local brew_outdated=$(brew outdated 2>/dev/null | wc -l | tr -d ' ')
+      if [[ $brew_outdated -gt 0 ]]; then
+        updates="${updates}📦 Homebrew: $brew_outdated package(s) can be updated (run 'brew upgrade')\n"
+      fi
+    fi
+
+    # Check npm global updates
+    if command -v npm >/dev/null 2>&1; then
+      local npm_outdated=$(npm outdated -g 2>/dev/null | tail -n +2 | wc -l | tr -d ' ')
+      if [[ $npm_outdated -gt 0 ]]; then
+        updates="${updates}📦 npm: $npm_outdated global package(s) can be updated (run 'npm update -g')\n"
+      fi
+    fi
+
+    # Update cache file
+    touch "$cache_file"
+
+    # Show updates if any
+    if [[ -n "$updates" ]]; then
+      echo "\n${updates}" >> "$cache_file.log"
+      # Only show notification if there are updates
+      echo -e "$updates"
+    fi
+  } &!
+}
+
+# Run check on shell startup
+check_package_updates
 
 function fix_colima_docker() {
   echo "🔍 Checking DOCKER_HOST..."
@@ -221,5 +274,11 @@ function fix_colima_docker() {
   echo "❌ Docker still not responding after restart."
   return 1
 }
+
 # Source work-specific configuration
 [[ -f "$HOME/dotfiles/work.zsh" ]] && source "$HOME/dotfiles/work.zsh"
+
+# Deduplicate PATH entries while preserving order (must be at the very end)
+# This removes duplicates added by tools like pyenv, google-cloud-sdk, rbenv, etc.
+typeset -U path
+export PATH

@@ -5,7 +5,7 @@ test_essential_aliases() {
   echo "Testing essential aliases..."
   
   # Core aliases that should work everywhere
-  local core_aliases=(status add commit new gl k gti bu refresh)
+  local core_aliases=(status add commit new gl k gti bu refresh gemini-cli)
   # Platform-specific aliases that might not work in CI
   local platform_aliases=(j)
   
@@ -58,7 +58,7 @@ test_git_aliases() {
 
 test_essential_functions() {
   echo "Testing essential functions..."
-  local functions=(fix_colima_docker)
+  local functions=(fix_colima_docker check_package_updates)
   local failed=0
   
   for func in $functions; do
