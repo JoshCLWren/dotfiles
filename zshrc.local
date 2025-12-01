@@ -28,7 +28,6 @@ path=(
     "/opt/homebrew/opt/icu4c@77/bin"
     "/opt/homebrew/opt/icu4c@77/sbin"
     "$HOME/.codeium/windsurf/bin"
-    "$HOME/.nvm/versions/node/v23.8.0/bin"
     "$HOME/.local/bin"
     "$HOME/dotfiles-local/zsh-git-prompt/src/.bin"
     "$HOME/.cargo/bin"
@@ -38,7 +37,8 @@ path=(
     "$GOPATH/bin"
     "$HOME/code/youversion/yv/bin"
 )
-# Note: Removed $path[@] to prevent duplicates. PATH deduplication happens at the end.
+# Note: NVM path is dynamically added when NVM is loaded (see lazy-load section below)
+# Note: rbenv path is added when rbenv is initialized below
 
 # Initialize pyenv if available
 if command -v pyenv 1>/dev/null 2>&1; then
@@ -47,8 +47,37 @@ if command -v pyenv 1>/dev/null 2>&1; then
     eval "$(pyenv init -)"
     eval "$(pyenv virtualenv-init -)"
 fi
-# Lazy load NVM
+
+# Initialize rbenv if available
+if command -v rbenv 1>/dev/null 2>&1; then
+    eval "$(rbenv init - zsh)"
+fi
+
+# NVM configuration with smart PATH setup
 export NVM_DIR="$HOME/.nvm"
+
+# Add default NVM node bin to PATH immediately (for npm global binaries like 'claude')
+# This avoids slow NVM loading while ensuring npm globals are in PATH
+if [[ -f "$NVM_DIR/alias/default" ]]; then
+  _nvm_default_version=$(cat "$NVM_DIR/alias/default")
+  # Handle aliases like 'lts/*' or version numbers
+  if [[ -d "$NVM_DIR/versions/node/v${_nvm_default_version}" ]]; then
+    path=("$NVM_DIR/versions/node/v${_nvm_default_version}/bin" $path)
+  elif [[ -d "$NVM_DIR/versions/node/${_nvm_default_version}" ]]; then
+    path=("$NVM_DIR/versions/node/${_nvm_default_version}/bin" $path)
+  else
+    # Find the actual version for aliases like 'lts/*'
+    for dir in "$NVM_DIR"/versions/node/v*; do
+      if [[ -d "$dir" ]]; then
+        path=("$dir/bin" $path)
+        break
+      fi
+    done
+  fi
+  unset _nvm_default_version
+fi
+
+# Lazy load NVM (full initialization deferred until first use)
 nvm() {
   unfunction nvm
   [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
@@ -73,6 +102,10 @@ export GOPATH="$HOME/go"
 # Source powerlevel10k
 source /opt/homebrew/share/powerlevel10k/powerlevel10k.zsh-theme
 source /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+
+# Source p10k config (To customize prompt, run `p10k configure` or edit ~/.p10k.zsh)
+[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+
 # Editor setting
 export EDITOR="code -w"
 
@@ -104,8 +137,129 @@ alias _rebase='git pull origin main --rebase'
 alias k='kubectl'
 alias gemini-cli='gemini'
 
-# Keep your existing functions
-# [Rest of your functions remain the same]
+# User-defined aliases and functions
+alias pycharm='open -a "/Users/joshwren/Applications/PyCharm.app"'
+alias kx='kubectl exec $(kube-get-pod) -it -- bash'
+alias kxa='kubectl exec $(kube-get-pod) -c api-app -it -- bash'
+
+function killport() {
+    if [ $# -eq 0 ]; then
+        echo "usage: killport [port]\nnote: separate multiple ports with comma"
+    else
+        kill $(lsof -ti:$1)
+    fi
+}
+
+function findport() {
+    if [ $# -eq 0 ]; then
+        echo "usage: findport [port]"
+    else
+        netstat -vanp tcp | grep $1
+    fi
+}
+
+function redspec() {
+    if [ $# -eq 0 ]; then
+        echo "usage: redspec [service-name]"
+    else
+        redcli $1 .
+    fi
+}
+
+function git-cleanup() {
+    git branch --merged | egrep -v "(^\*|master|develop|main)" | xargs -n 1 git branch -d
+}
+
+function git-delete-all-branches() {
+    git branch | egrep -v "(^\*|master|develop|main)" | xargs -n 1 git branch -D
+}
+
+kube-get-pod() {
+    kubectl get pods --no-headers |
+        fzf \
+            --bind="ctrl-r:reload(kubectl get pods --no-headers)" \
+            --header="$P9K_KUBECONTEXT_NAME/$P9K_KUBECONTEXT_NAMESPACE (Press CTRL-R to reload)" \
+            --height=25% |
+        grep -o -E '^[^ ]+'
+}
+
+kube-pod-widget() {
+    local pod=$(kube-get-pod | join-lines)
+    zle reset-prompt
+    LBUFFER+=$pod
+}
+
+join-lines() {
+  local item
+  while read item; do
+    echo -n "${(q)item} "
+  done
+}
+
+# Kubernetes widget key binding
+zle -N kube-pod-widget
+bindkey '^k' kube-pod-widget
+
+# Function to recursively find .python-version from the current directory up to the root
+find_python_version_file() {
+  local current_dir=$(pwd)
+
+  while [[ "$current_dir" != "/" ]]; do
+    if [[ -f "$current_dir/.python-version" ]]; then
+      echo "$current_dir/.python-version"
+      return 0
+    fi
+    current_dir=$(dirname "$current_dir")
+  done
+
+  return 1
+}
+
+# Function to check for .python-version and activate or deactivate pyenv
+auto_pyenv_activate_or_deactivate() {
+  local python_version_file=$(find_python_version_file)
+
+  if [[ -n "$python_version_file" ]]; then
+    local version
+    version=$(cat "$python_version_file")
+    # Check if the version is installed
+    if pyenv versions --bare | grep -qx "$version"; then
+      pyenv activate "$version" 2>/dev/null || pyenv local "$version"
+    fi
+  else
+    pyenv deactivate 2>/dev/null  # Reverts to the system Python
+  fi
+}
+
+# Hook for automatic pyenv activation
+autoload -U add-zsh-hook
+add-zsh-hook chpwd auto_pyenv_activate_or_deactivate
+add-zsh-hook -D precmd _pyenv_virtualenv_hook
+export PYENV_VIRTUALENV_DISABLE_PROMPT=1
+
+# Initial check in case you start in a directory with .python-version
+auto_pyenv_activate_or_deactivate
+
+yvba() {
+    local target_machine="gitlab.com"
+    local login=$(awk -v machine="$target_machine" '
+    $1 == "machine" && $2 == machine {found=1}
+    found && $1 == "login" {print $2; found=0}    ' ~/.netrc)
+    local password=$(awk -v machine="$target_machine" '
+    $1 == "machine" && $2 == machine {found=1}        found && $1 == "password" {print $2; found=0}    ' ~/.netrc)
+    local build_args=(        "--build-arg GITLAB_REPO_USERNAME=${login}"
+    "--build-arg GITLAB_REPO_TOKEN=${password}"
+    "--build-arg GITLAB_USER=${login}"
+    "--build-arg GITLAB_PASSWORD=${password}"
+    "--build-arg PYPI_USERNAME=${login}"
+    "--build-arg PYPI_PASSWORD=${password}"
+    "--build-arg YV_DOCKER_CACHE=${YV_DOCKER_CACHE}"
+    "--build-arg YV_REGISTRY=${YV_REGISTRY}"    )
+    for arg in "$@"; do
+    build_args+=("--build-arg $arg")
+    done
+    echo "${build_args[@]}"
+}
 
 # Load evalcache for performance
 [[ -f "$HOME/dotfiles/evalcache.zsh" ]] && source "$HOME/dotfiles/evalcache.zsh"
