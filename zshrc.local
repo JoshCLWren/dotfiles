@@ -137,6 +137,11 @@ alias _rebase='git pull origin main --rebase'
 alias k='kubectl'
 alias gemini-cli='gemini'
 
+# GKE cluster credentials (use --internal-ip for access via Netskope/VPN)
+alias gke-staging='USE_GKE_GCLOUD_AUTH_PLUGIN=True gcloud container clusters get-credentials yv-api-staging --internal-ip --region us-central1 --project yv-api-staging'
+alias gke-prod='USE_GKE_GCLOUD_AUTH_PLUGIN=True gcloud container clusters get-credentials yv-api-prod --internal-ip --region us-central1 --project yv-api-production'
+alias gcloud-auth='~/dotfiles/gcloud_auto_auth.py'
+
 # User-defined aliases and functions
 alias pycharm='open -a "/Users/joshwren/Applications/PyCharm.app"'
 alias kx='kubectl exec $(kube-get-pod) -it -- bash'

@@ -2,4 +2,5 @@
 .envrc
 .idea/
 test_results.log
+.gcloud-auth-venv/
 
