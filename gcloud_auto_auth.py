@@ -2,6 +2,7 @@
 """
 Automated gcloud auth login.
 Copies Firefox profile to temp dir, uses Playwright to click through OAuth.
+Caches working selectors for faster subsequent runs.
 """
 
 import subprocess
@@ -10,10 +11,55 @@ import sys
 import os
 import shutil
 import tempfile
-from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
+import json
+import select
+from pathlib import Path
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout, Error as PlaywrightError
 
 YOUVERSION_EMAIL = "josh.wren@youversion.com"
 FIREFOX_PROFILES_DIR = os.path.expanduser("~/Library/Application Support/Firefox/Profiles")
+SELECTOR_CACHE_FILE = Path.home() / ".gcloud_auth_selectors.json"
+
+# Default selectors to try
+DEFAULT_CONSENT_SELECTORS = [
+    'button:has-text("Continue")',
+    'button:has-text("Allow")',
+    'div[role="button"]:has-text("Continue")',
+    'div[role="button"]:has-text("Allow")',
+]
+
+
+def load_selector_cache() -> dict:
+    """Load cached selectors from disk."""
+    if SELECTOR_CACHE_FILE.exists():
+        try:
+            with open(SELECTOR_CACHE_FILE) as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            pass
+    return {"consent_selectors": [], "last_working": []}
+
+
+def save_selector_cache(cache: dict):
+    """Save working selectors to disk for future runs."""
+    try:
+        with open(SELECTOR_CACHE_FILE, "w") as f:
+            json.dump(cache, f, indent=2)
+    except IOError as e:
+        print(f"Warning: Could not save selector cache: {e}")
+
+
+def get_prioritized_selectors(cache: dict) -> list[str]:
+    """Return selectors with last-working ones first."""
+    last_working = cache.get("last_working", [])
+    # Put last working selectors first, then defaults (without duplicates)
+    seen = set()
+    result = []
+    for sel in last_working + DEFAULT_CONSENT_SELECTORS:
+        if sel not in seen:
+            seen.add(sel)
+            result.append(sel)
+    return result
 
 
 def get_default_firefox_profile():
@@ -48,41 +94,19 @@ def copy_firefox_profile(src_profile: str) -> str:
     return temp_dir
 
 
-def try_click(page, selectors, timeout=2000):
-    """Try clicking any of the selectors, return True if successful."""
-    for selector in selectors:
-        try:
-            page.click(selector, timeout=timeout)
-            return True
-        except PlaywrightTimeout:
-            continue
-    return False
-
-
-def get_auth_code_from_page(page):
-    """Try to extract auth code from current page."""
-    # Check URL first
-    url = page.url
+def get_auth_code_from_url(url: str) -> str | None:
+    """Extract auth code from URL if present."""
     match = re.search(r'[?&]code=([^&]+)', url)
-    if match:
-        return match.group(1)
-
-    # Check page content for code pattern
-    try:
-        text = page.inner_text('body')
-        # Look for authorization code patterns
-        matches = re.findall(r'4/[0-9A-Za-z_-]{20,}', text)
-        if matches:
-            return max(matches, key=len)
-    except:
-        pass
-
-    return None
+    return match.group(1) if match else None
 
 
 def main():
     env = os.environ.copy()
     env["BROWSER"] = "false"
+
+    # Load cached selectors
+    selector_cache = load_selector_cache()
+    working_selectors = []  # Track which selectors worked this run
 
     print("Starting gcloud auth...")
     proc = subprocess.Popen(
@@ -116,7 +140,6 @@ def main():
         sys.exit(1)
 
     temp_profile = copy_firefox_profile(src_profile)
-
     auth_code = None
 
     try:
@@ -129,39 +152,67 @@ def main():
 
             page = browser.pages[0] if browser.pages else browser.new_page()
             page.goto(url)
-            page.wait_for_load_state("domcontentloaded")
 
-            page.wait_for_timeout(500)
-            try_click(page, [
-                f'[data-identifier="{YOUVERSION_EMAIL}"]',
-                f'text={YOUVERSION_EMAIL}',
-            ], timeout=3000)
+            # Wait for and click account
+            account_selector = f'[data-identifier="{YOUVERSION_EMAIL}"]'
+            try:
+                page.wait_for_selector(account_selector, timeout=10000)
+                page.click(account_selector)
+                print(f"Clicked account: {YOUVERSION_EMAIL}")
+            except PlaywrightTimeout:
+                pass
 
-            # Step 2: Click through consent screens (may be multiple)
-            for attempt in range(5):
-                page.wait_for_load_state("domcontentloaded")
-                page.wait_for_timeout(500)
+            # Get prioritized selectors (cached working ones first)
+            consent_selectors = get_prioritized_selectors(selector_cache)
+            print(f"Using {len(consent_selectors)} selectors (cached: {len(selector_cache.get('last_working', []))})")
 
-                # Check if we got the code
-                auth_code = get_auth_code_from_page(page)
-                if auth_code:
-                    break
+            # Keep clicking buttons and checking for code until we get it
+            max_iterations = 20  # Prevent infinite loops
+            iteration = 0
+            while not auth_code and iteration < max_iterations:
+                iteration += 1
 
-                # Try clicking Allow/Continue buttons
-                try_click(page, [
-                    'button:has-text("Continue")',
-                    'button:has-text("Allow")',
-                    'div[role="button"]:has-text("Continue")',
-                    'div[role="button"]:has-text("Allow")',
-                    '#submit_approve_access',
-                    'button[type="submit"]',
-                ], timeout=1000)
-
-            if not auth_code:
-                for _ in range(20):
-                    page.wait_for_timeout(500)
-                    auth_code = get_auth_code_from_page(page)
+                # Check if we got redirected to code page via URL
+                try:
+                    current_url = page.url
+                    auth_code = get_auth_code_from_url(current_url)
                     if auth_code:
+                        print("Got auth code from URL")
+                        break
+                    # Also check for sdk.cloud.google.com (code display page)
+                    if "sdk.cloud.google.com" in current_url:
+                        auth_code = get_auth_code_from_url(current_url)
+                        if auth_code:
+                            print("Got auth code from URL")
+                            break
+                except PlaywrightError:
+                    pass
+
+                # Try to click any visible consent button (prioritized order)
+                clicked = False
+                for selector in consent_selectors:
+                    try:
+                        btn = page.locator(selector).first
+                        if btn.is_visible(timeout=500):  # Short timeout for visibility check
+                            btn.click()
+                            print(f"Clicked: {selector}")
+                            working_selectors.append(selector)
+                            clicked = True
+                            page.wait_for_timeout(500)  # Brief pause after click
+                            break
+                    except (PlaywrightTimeout, PlaywrightError):
+                        continue
+
+                # If no button was clicked, wait for either a button or navigation
+                if not clicked:
+                    try:
+                        page.wait_for_selector(
+                            ', '.join(consent_selectors[:4]),  # Only wait on first few
+                            timeout=30000  # 30 sec wait between clicks
+                        )
+                    except (PlaywrightTimeout, PlaywrightError):
+                        # Check URL one more time before giving up
+                        auth_code = get_auth_code_from_url(page.url)
                         break
 
             browser.close()
@@ -169,17 +220,33 @@ def main():
     finally:
         shutil.rmtree(temp_profile, ignore_errors=True)
 
+    # Save working selectors for next time
+    if working_selectors:
+        # Deduplicate while preserving order
+        seen = set()
+        unique_working = []
+        for s in working_selectors:
+            if s not in seen:
+                seen.add(s)
+                unique_working.append(s)
+        selector_cache["last_working"] = unique_working
+        save_selector_cache(selector_cache)
+        print(f"Cached {len(unique_working)} working selectors for next run")
+
     if not auth_code:
         auth_code = input("Paste the code here: ").strip()
-
 
     proc.stdin.write(auth_code + "\n")
     proc.stdin.flush()
 
-    out, _ = proc.communicate(timeout=30)
-    if out:
-        print(out)
+    # Read any immediate output (2s timeout), then finish
+    while select.select([proc.stdout], [], [], 2)[0]:
+        line = proc.stdout.readline()
+        if not line:
+            break
+        print(line, end="")
 
+    proc.wait(timeout=3)
     print("Done!")
 
 

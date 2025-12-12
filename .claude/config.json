@@ -1,0 +1,60 @@
+{
+  "mcpServers": {
+    "sequential-thinking": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ]
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/joshwren/code",
+        "/Users/joshwren/.pyenv/versions/organizations/lib/python3.11/site-packages",
+        "/Users/joshwren/.pyenv/versions/content/lib/python3.11/site-packages",
+        "/Users/joshwren/manifest/yv/apis"
+      ]
+    },
+    "sqlite-explorer": {
+      "command": "/opt/homebrew/bin/uv",
+      "args": [
+        "run",
+        "--with",
+        "fastmcp",
+        "--with",
+        "uvicorn",
+        "fastmcp",
+        "run",
+        "/Users/joshwren/code/playground/sqlite-explorer-fastmcp-mcp-server/sqlite_explorer.py"
+      ],
+      "env": {
+        "SQLITE_DB_PATH": "/Users/joshwren/code/playground/comic_pricer/comic_reviews.db"
+      }
+    },
+    "shell-server": {
+      "command": "npx",
+      "args": [
+        "mcp-shell"
+      ]
+    },
+    "youversion-mcp": {
+      "command": "node",
+      "args": [
+        "/Users/joshwren/manifest/yv/mcp-server/dist/index.js"
+      ]
+    },
+    "michelangelo-mcp": {
+      "command": "/Users/joshwren/.pyenv/versions/yv/bin/python",
+      "args": [
+        "-m",
+        "michelangelo_mcp.server"
+      ],
+      "env": {
+        "YOUVERSION_WORKSPACE": "/Users/joshwren/code/youversion"
+      }
+    }
+  }
+}
