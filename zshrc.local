@@ -213,12 +213,12 @@ alias commit='git commit'
 alias add='git add .'
 alias rspec='bundle exec rspec'
 alias refresh='source ~/.zshrc'
+alias ..='cd ..'
 alias bug='pytest -sxv tests --last-failed --pdb'
 alias mouse='tmux set mouse'
 alias sniff="sniffer -x tests"
 alias gagrc='git add .; git rebase --continue'
 alias new='git checkout -b'
-alias z='vim  ~/dotfiles/zshrc.local'
 alias nyan='cd ~/go-nyancat && ./go-nyancat | lolcat'
 alias gl="git log --oneline --decorate --graph -10"
 alias gti='git'
@@ -369,8 +369,9 @@ yvba() {
 # Load evalcache for performance
 [[ -f "$HOME/dotfiles/evalcache.zsh" ]] && source "$HOME/dotfiles/evalcache.zsh"
 
-# Lazy load jump and fnm using evalcache
-if command -v jump >/dev/null 2>&1; then
+# Platform-specific directory jumping
+if [[ "$DOTFILES_OS" == "macos" ]] && command -v jump >/dev/null 2>&1; then
+  # Use jump on macOS with lazy loading
   if command -v _evalcache >/dev/null 2>&1; then
     _evalcache jump shell
   else
@@ -379,13 +380,16 @@ if command -v jump >/dev/null 2>&1; then
       eval "$(command jump shell)"
       jump "$@"
     }
-    # Create j alias that also lazy loads
     j() {
       unfunction jump j 2>/dev/null
       eval "$(command jump shell)"
       j "$@"
     }
   fi
+elif [[ "$DOTFILES_OS" == "linux" ]] && command -v zoxide >/dev/null 2>&1; then
+  # Use zoxide on Linux
+  eval "$(zoxide init zsh)"
+  alias j='z'  # Alias j to zoxide's z for consistency with macOS
 fi
 
 if command -v fnm >/dev/null 2>&1; then
