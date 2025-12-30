@@ -169,7 +169,7 @@ prepare_test_environment() {
     # In CI, just try to source what we can without failing the entire test run
     # Comment out problematic lines that are known to fail in CI
     local temp_file=$(mktemp)
-    sed -e 's|^source /opt/homebrew|# CI-SKIP: source /opt/homebrew|g' \
+    sed -e 's|.*opt/homebrew.*|# CI-SKIP: Homebrew paths not available in CI|g' \
         -e 's|^export DOCKER_HOST=.*colima.*|# CI-SKIP: export DOCKER_HOST (colima not available)|g' \
         "$DOTFILES_DIR/zshrc.local" > "$temp_file"
     
