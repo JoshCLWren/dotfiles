@@ -3,15 +3,15 @@
 
 test_essential_aliases() {
   echo "Testing essential aliases..."
-  
+
   # Core aliases that should work everywhere
-  local core_aliases=(status add commit new gl k gti bu refresh gemini-cli)
+  local -a core_aliases=(status add commit new gl k gti bu refresh gemini-cli)
   # Platform-specific aliases that might not work in CI
-  local platform_aliases=(j)
-  
+  local -a platform_aliases=(j)
+
   local failed=0
   local skipped=0
-  
+
   # Test core aliases
   for alias_name in $core_aliases; do
     if ! which $alias_name >/dev/null 2>&1; then
@@ -19,18 +19,25 @@ test_essential_aliases() {
       ((failed++))
     fi
   done
-  
-  # Test platform-specific aliases with CI awareness
-  for alias_name in $platform_aliases; do
-    if [[ -n "$CI" || -n "$GITHUB_ACTIONS" ]]; then
-      echo "SKIP: Platform-specific alias '$alias_name' (CI mode)"
-      ((skipped++))
-    elif ! which $alias_name >/dev/null 2>&1; then
-      echo "FAIL: Platform-specific alias '$alias_name' not found"
-      ((failed++))
-    fi
-  done
-  
+
+  if [[ -n "$CI" || -n "$GITHUB_ACTIONS" ]]; then
+    echo "SKIP: Platform-specific aliases '${platform_aliases[*]}' (CI mode)"
+    ((skipped+=${#platform_aliases[@]}))
+  else
+    # Test platform-specific aliases with environment awareness
+    for alias_name in $platform_aliases; do
+      if [[ "$alias_name" == "j" ]] && ! command -v jump >/dev/null 2>&1; then
+        echo "INFO: 'jump' binary not available; skipping alias '$alias_name'"
+        ((skipped++))
+        continue
+      fi
+      if ! which $alias_name >/dev/null 2>&1; then
+        echo "FAIL: Platform-specific alias '$alias_name' not found"
+        ((failed++))
+      fi
+    done
+  fi
+
   if [[ $failed -eq 0 ]]; then
     local total_tested=$((${#core_aliases[@]} + ${#platform_aliases[@]} - skipped))
     echo "PASS: All tested aliases found (${#core_aliases[@]} core + $((${#platform_aliases[@]} - skipped)) platform-specific)"
@@ -40,36 +47,75 @@ test_essential_aliases() {
   fi
 }
 
+test_dotfiles_os_detection() {
+  echo "Testing DOTFILES_OS detection..."
+  if [[ -z "${DOTFILES_OS:-}" ]]; then
+    echo "FAIL: DOTFILES_OS is not set"
+    return 1
+  fi
+
+  case "$DOTFILES_OS" in
+    macos|linux|other)
+      ;;
+    *)
+      echo "FAIL: DOTFILES_OS has unexpected value '$DOTFILES_OS'"
+      return 1
+      ;;
+  esac
+
+  local expected_os
+  case "$(uname -s)" in
+    Darwin) expected_os="macos" ;;
+    Linux) expected_os="linux" ;;
+    *) expected_os="other" ;;
+  esac
+
+  if [[ -z "${DOTFILES_OS_OVERRIDE:-}" && "$DOTFILES_OS" != "$expected_os" ]]; then
+    echo "FAIL: DOTFILES_OS ('$DOTFILES_OS') does not match detected OS ('$expected_os')"
+    return 1
+  fi
+
+  echo "PASS: DOTFILES_OS correctly set to '$DOTFILES_OS'"
+}
+
 test_git_aliases() {
   echo "Testing git aliases..."
-  
+
   # Test that git aliases point to correct commands
   local git_status=$(alias status 2>/dev/null)
   [[ "$git_status" == *"git status"* ]] || { echo "FAIL: status alias incorrect"; return 1; }
-  
+
   local git_add=$(alias add 2>/dev/null)
   [[ "$git_add" == *"git add ."* ]] || { echo "FAIL: add alias incorrect"; return 1; }
-  
+
   local git_log=$(alias gl 2>/dev/null)
   [[ "$git_log" == *"git log --oneline"* ]] || { echo "FAIL: gl alias incorrect"; return 1; }
-  
+
   echo "PASS: Git aliases correctly configured"
 }
 
 test_essential_functions() {
   echo "Testing essential functions..."
-  local functions=(fix_colima_docker check_package_updates)
+  local functions=(check_package_updates)
+  if [[ "${DOTFILES_OS:-}" == "macos" ]] && command -v colima >/dev/null 2>&1; then
+    functions+=(fix_colima_docker)
+  fi
   local failed=0
-  
+
+  if [[ ${#functions[@]} -eq 0 ]]; then
+    echo "INFO: No platform-specific essential functions required on ${DOTFILES_OS:-unknown}"
+    return 0
+  fi
+
   for func in $functions; do
     if ! type $func >/dev/null 2>&1; then
       echo "FAIL: Essential function '$func' not found"
       ((failed++))
     fi
   done
-  
+
   if [[ $failed -eq 0 ]]; then
-    echo "PASS: All essential functions found ($functions)"
+    echo "PASS: All essential functions found (${functions[*]})"
   else
     echo "FAIL: $failed essential functions missing"
     return 1
@@ -80,14 +126,14 @@ test_git_utilities() {
   echo "Testing git utility functions..."
   local git_functions=(git_fix_rejected_push git_detect_rejected_files git_paste_fix)
   local failed=0
-  
+
   for func in $git_functions; do
     if ! type $func >/dev/null 2>&1; then
       echo "FAIL: Git utility function '$func' not found"
       ((failed++))
     fi
   done
-  
+
   if [[ $failed -eq 0 ]]; then
     echo "PASS: All git utility functions found ($git_functions)"
   else
@@ -100,7 +146,7 @@ test_lazy_loading_functions() {
   echo "Testing lazy loading functions are defined..."
   local lazy_functions=(nvm node npm)
   local failed=0
-  
+
   for func in $lazy_functions; do
     if ! type $func >/dev/null 2>&1; then
       echo "FAIL: Lazy loading function '$func' not defined"
@@ -114,7 +160,7 @@ test_lazy_loading_functions() {
       fi
     fi
   done
-  
+
   if [[ $failed -eq 0 ]]; then
     echo "PASS: All lazy loading functions properly defined"
   else
@@ -127,13 +173,14 @@ test_lazy_loading_functions() {
 run_basic_tests() {
   echo "=== BASIC FUNCTIONALITY TESTS ==="
   local failed=0
-  
+
   test_essential_aliases || ((failed++))
+  test_dotfiles_os_detection || ((failed++))
   test_git_aliases || ((failed++))
   test_essential_functions || ((failed++))
   test_git_utilities || ((failed++))
   test_lazy_loading_functions || ((failed++))
-  
+
   if [[ $failed -eq 0 ]]; then
     echo "✓ All basic functionality tests passed"
     return 0

@@ -20,7 +20,11 @@ test_required_environment_variables() {
     # In local environment, these should be set
     [[ -n "$GOPATH" ]] || { echo "FAIL: GOPATH not set"; ((failed++)); }
     [[ -n "$NVM_DIR" ]] || { echo "FAIL: NVM_DIR not set"; ((failed++)); }
-    [[ -n "$DOCKER_HOST" ]] || { echo "FAIL: DOCKER_HOST not set"; ((failed++)); }
+    if [[ "${DOTFILES_OS:-}" == "macos" ]]; then
+      [[ -n "$DOCKER_HOST" ]] || { echo "FAIL: DOCKER_HOST not set"; ((failed++)); }
+    else
+      [[ -z "$DOCKER_HOST" ]] && echo "INFO: DOCKER_HOST unset on ${DOTFILES_OS:-unknown} (expected)"
+    fi
   fi
   
   if [[ $failed -eq 0 ]]; then
@@ -39,10 +43,12 @@ test_path_variables() {
   local required_paths=(
     "$HOME/.cargo/bin"
     "$HOME/bin"
-    "/opt/homebrew/bin"
     "/usr/local/bin"
     "/usr/bin"
   )
+  if [[ "${DOTFILES_OS:-}" == "macos" ]]; then
+    required_paths+=("/opt/homebrew/bin")
+  fi
   
   for path_entry in $required_paths; do
     if [[ "$PATH" != *"$path_entry"* ]]; then

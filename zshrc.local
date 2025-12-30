@@ -1,8 +1,18 @@
+setopt interactivecomments
+
 # Loading zshrc.local...
 # Powerlevel10k instant prompt - must be at the top
 if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
 fi
+
+# Detect operating system
+case "${DOTFILES_OS_OVERRIDE:-$(uname -s)}" in
+  Darwin) DOTFILES_OS="macos" ;;
+  Linux) DOTFILES_OS="linux" ;;
+  *) DOTFILES_OS="other" ;;
+esac
+export DOTFILES_OS
 
 # Oh My Zsh configuration
 export ZSH="$HOME/.oh-my-zsh"
@@ -13,40 +23,55 @@ plugins=(git)
 [[ -f "$ZSH/oh-my-zsh.sh" ]] && source "$ZSH/oh-my-zsh.sh"
 
 # Set PATH at the very beginning
-path=(
-    # System paths
-    "/usr/local/bin"
-    "/usr/bin"
-    "/bin"
-    "/usr/sbin"
-    "/sbin"
+typeset -a _mac_paths _dotfiles_path
+if [[ "$DOTFILES_OS" == "macos" ]]; then
+  _mac_paths=(
     "/opt/homebrew/bin"
-    # Additional paths
     "/opt/homebrew/opt/curl/bin"
     "/opt/homebrew/opt/unzip/bin"
     "/opt/homebrew/opt/openjdk/bin"
     "/opt/homebrew/opt/icu4c@77/bin"
     "/opt/homebrew/opt/icu4c@77/sbin"
-    "$HOME/.codeium/windsurf/bin"
-    "$HOME/.local/bin"
-    "$HOME/dotfiles-local/zsh-git-prompt/src/.bin"
-    "$HOME/.cargo/bin"
-    "$HOME/bin"
-    "$HOME/code/youversion/openapi/redcli"
-    "$HOME/code/youversion/bi-tools"
-    "$GOPATH/bin"
-    "$HOME/code/youversion/yv/bin"
+  )
+fi
+
+_dotfiles_path=(
+  # System paths
+  "/usr/local/bin"
+  "/usr/bin"
+  "/bin"
+  "/usr/sbin"
+  "/sbin"
 )
-# Note: NVM path is dynamically added when NVM is loaded (see lazy-load section below)
-# Note: rbenv path is added when rbenv is initialized below
+if [[ "$DOTFILES_OS" == "macos" ]]; then
+  _dotfiles_path+=("${_mac_paths[@]}")
+fi
+_dotfiles_path+=(
+  # Additional paths
+  "$HOME/.codeium/windsurf/bin"
+  "$HOME/.local/bin"
+  "$HOME/dotfiles-local/zsh-git-prompt/src/.bin"
+  "$HOME/.cargo/bin"
+  "$HOME/bin"
+  "$HOME/code/youversion/openapi/redcli"
+  "$HOME/code/youversion/bi-tools"
+  "$GOPATH/bin"
+  "$HOME/code/youversion/yv/bin"
+)
+path=(
+  "${_dotfiles_path[@]}"
+  $path[@]
+)
+unset _mac_paths _dotfiles_path
 
 # Initialize pyenv if available
-if command -v pyenv 1>/dev/null 2>&1; then
-    # Ensure no existing pyenv function conflicts
-    unset -f pyenv 2>/dev/null || true
-    eval "$(pyenv init -)"
-    eval "$(pyenv virtualenv-init -)"
-fi
+# Disabled - using uv venvs instead
+# if command -v pyenv 1>/dev/null 2>&1; then
+#     # Ensure no existing pyenv function conflicts
+#     unset -f pyenv 2>/dev/null || true
+#     eval "$(pyenv init -)"
+#     eval "$(pyenv virtualenv-init -)"
+# fi
 
 # Initialize rbenv if available
 if command -v rbenv 1>/dev/null 2>&1; then
@@ -95,17 +120,82 @@ npm() {
   npm "$@"
 }
 # Set up Go environment (cached)
-if [[ -z "$GOROOT" ]] && command -v brew >/dev/null 2>&1; then
-  export GOROOT="$(brew --prefix golang 2>/dev/null)/libexec"
+if [[ -z "$GOROOT" ]]; then
+  if command -v go >/dev/null 2>&1; then
+    go_root="$(go env GOROOT 2>/dev/null)"
+    [[ -n "$go_root" ]] && export GOROOT="$go_root"
+  elif [[ "$DOTFILES_OS" == "macos" ]] && command -v brew >/dev/null 2>&1; then
+    # Homebrew installs expose GOROOT via libexec; Linux installs often self-manage via go env
+    export GOROOT="$(brew --prefix golang 2>/dev/null)/libexec"
+  fi
 fi
+unset go_root
 export GOPATH="$HOME/go"
-# Source powerlevel10k
-source /opt/homebrew/share/powerlevel10k/powerlevel10k.zsh-theme
-source /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+# Utility: source the first readable file from a candidate list
+source_first_existing() {
+  local candidate
+  for candidate in "$@"; do
+    if [[ -r "$candidate" ]]; then
+      source "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
 
-# Source p10k config (To customize prompt, run `p10k configure` or edit ~/.p10k.zsh)
-[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+# Source powerlevel10k theme if available
+case "$DOTFILES_OS" in
+  macos)
+    source_first_existing \
+      "/opt/homebrew/share/powerlevel10k/powerlevel10k.zsh-theme" \
+      "$ZSH/custom/themes/powerlevel10k/powerlevel10k.zsh-theme" \
+      "$HOME/.oh-my-zsh/custom/themes/powerlevel10k/powerlevel10k.zsh-theme" \
+      "$HOME/powerlevel10k/powerlevel10k.zsh-theme"
+    ;;
+  linux)
+    source_first_existing \
+      "$ZSH/custom/themes/powerlevel10k/powerlevel10k.zsh-theme" \
+      "$HOME/.oh-my-zsh/custom/themes/powerlevel10k/powerlevel10k.zsh-theme" \
+      "$HOME/powerlevel10k/powerlevel10k.zsh-theme" \
+      "/usr/share/powerlevel10k/powerlevel10k.zsh-theme" \
+      "/usr/local/share/powerlevel10k/powerlevel10k.zsh-theme"
+    ;;
+  *)
+    source_first_existing \
+      "$ZSH/custom/themes/powerlevel10k/powerlevel10k.zsh-theme" \
+      "$HOME/.oh-my-zsh/custom/themes/powerlevel10k/powerlevel10k.zsh-theme" \
+      "$HOME/powerlevel10k/powerlevel10k.zsh-theme"
+    ;;
+esac
 
+if [[ -r "$HOME/dotfiles/p10k.zsh" ]]; then
+  source "$HOME/dotfiles/p10k.zsh"
+elif [[ -r "$HOME/.p10k.zsh" ]]; then
+  source "$HOME/.p10k.zsh"
+fi
+
+# Source zsh-autosuggestions plugin if available
+case "$DOTFILES_OS" in
+  macos)
+    source_first_existing \
+      "/opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh" \
+      "$ZSH/custom/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" \
+      "/usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh" \
+      "/usr/local/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
+    ;;
+  linux)
+    source_first_existing \
+      "$ZSH/custom/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" \
+      "/usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh" \
+      "/usr/local/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
+    ;;
+  *)
+    source_first_existing \
+      "$ZSH/custom/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh"
+    ;;
+esac
+
+unset -f source_first_existing
 # Editor setting
 export EDITOR="code -w"
 
@@ -347,8 +437,6 @@ if [ -f "/Users/joshwren/Code/youversion/yv/bin/yv" ]; then
   fi
 fi
 
-export DOCKER_HOST="unix://${HOME}/.colima/default/docker.sock"
-
 # Background update check for brew and npm
 function check_package_updates() {
   local cache_file="$HOME/.cache/package_updates_check"
@@ -359,7 +447,15 @@ function check_package_updates() {
 
   # Check if cache file exists and is recent
   if [[ -f "$cache_file" ]]; then
-    local last_check=$(stat -f %m "$cache_file" 2>/dev/null || echo 0)
+    local last_check=0
+    if command -v stat >/dev/null 2>&1; then
+      # macOS/BSD: stat -f %m ; Linux/GNU: stat -c %Y
+      last_check=$(stat -f %m "$cache_file" 2>/dev/null || stat -c %Y "$cache_file" 2>/dev/null || echo 0)
+      # Ensure numeric (strip whitespace/newlines); avoid math errors if stat prints unexpected text
+      last_check=${last_check//$'\n'/}
+      last_check=${last_check//[[:space:]]/}
+      [[ "$last_check" == <-> ]] || last_check=0
+    fi
     local current_time=$(date +%s)
     local time_diff=$((current_time - last_check))
 
@@ -403,6 +499,9 @@ function check_package_updates() {
 # Run check on shell startup
 check_package_updates
 
+if [[ "$DOTFILES_OS" == "macos" ]] && command -v colima >/dev/null 2>&1; then
+  export DOCKER_HOST="unix://${HOME}/.colima/default/docker.sock"
+
 function fix_colima_docker() {
   echo "🔍 Checking DOCKER_HOST..."
   if [[ -n "$DOCKER_HOST" ]]; then
@@ -443,8 +542,8 @@ function fix_colima_docker() {
   echo "❌ Docker still not responding after restart."
   return 1
 }
-
-# Source work-specific configuration
+fi
+# Source work-specific configuration (keep platform-specific logic bundled there)
 [[ -f "$HOME/dotfiles/work.zsh" ]] && source "$HOME/dotfiles/work.zsh"
 
 # ============================================================================

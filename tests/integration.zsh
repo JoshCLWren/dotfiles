@@ -166,28 +166,37 @@ test_git_utilities_integration() {
 test_docker_functions_integration() {
   echo "Testing Docker functions integration..."
   
-  # Test fix_colima_docker function exists
+  if [[ "${DOTFILES_OS:-}" != "macos" ]]; then
+    echo "INFO: Skipping Colima Docker checks on ${DOTFILES_OS:-unknown} (not macOS)"
+    return 0
+  fi
+
+  if ! command -v colima >/dev/null 2>&1; then
+    echo "INFO: Colima not installed; skipping Docker function checks"
+    return 0
+  fi
+
   if type fix_colima_docker >/dev/null 2>&1; then
     echo "PASS: fix_colima_docker function available"
-    
-    # Test DOCKER_HOST is set (CI-aware)
-    if [[ -n "$CI" || -n "$GITHUB_ACTIONS" ]]; then
-      if [[ -n "$DOCKER_HOST" ]]; then
-        echo "PASS: DOCKER_HOST environment variable set in CI ($DOCKER_HOST)"
-      else
-        echo "INFO: DOCKER_HOST not set in CI (expected for Docker-less CI environments)"
-      fi
-    else
-      if [[ -n "$DOCKER_HOST" ]]; then
-        echo "PASS: DOCKER_HOST environment variable set ($DOCKER_HOST)"
-      else
-        echo "FAIL: DOCKER_HOST environment variable not set"
-        return 1
-      fi
-    fi
   else
     echo "FAIL: fix_colima_docker function missing"
     return 1
+  fi
+
+  # Test DOCKER_HOST is set (CI-aware)
+  if [[ -n "$CI" || -n "$GITHUB_ACTIONS" ]]; then
+    if [[ -n "$DOCKER_HOST" ]]; then
+      echo "PASS: DOCKER_HOST environment variable set in CI ($DOCKER_HOST)"
+    else
+      echo "INFO: DOCKER_HOST not set in CI (expected for Docker-less CI environments)"
+    fi
+  else
+    if [[ -n "$DOCKER_HOST" ]]; then
+      echo "PASS: DOCKER_HOST environment variable set ($DOCKER_HOST)"
+    else
+      echo "FAIL: DOCKER_HOST environment variable not set"
+      return 1
+    fi
   fi
 }
 
@@ -252,10 +261,14 @@ test_environment_integration() {
   echo "Testing environment variable integration..."
   
   # Test Go environment
-  if [[ -n "$GOPATH" && -n "$GOROOT" ]]; then
-    echo "PASS: Go environment variables set (GOPATH: $GOPATH, GOROOT: $GOROOT)"
+  if [[ -n "$GOPATH" ]]; then
+    if [[ -n "$GOROOT" ]]; then
+      echo "PASS: Go environment variables set (GOPATH: $GOPATH, GOROOT: $GOROOT)"
+    else
+      echo "INFO: GOROOT not set; relying on system Go installation"
+    fi
   else
-    echo "FAIL: Go environment variables not properly set"
+    echo "FAIL: GOPATH not set"
     return 1
   fi
   
