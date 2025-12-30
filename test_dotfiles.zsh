@@ -170,6 +170,7 @@ prepare_test_environment() {
     # Comment out problematic lines that are known to fail in CI
     local temp_file=$(mktemp)
     sed -e 's|.*opt/homebrew.*|# CI-SKIP: Homebrew paths not available in CI|g' \
+        -e 's|^\s*for dir in "\$NVM_DIR"/versions/node/v\*;|# CI-SKIP: NVM version glob (no node in CI)|g' \
         -e 's|^export DOCKER_HOST=.*colima.*|# CI-SKIP: export DOCKER_HOST (colima not available)|g' \
         "$DOTFILES_DIR/zshrc.local" > "$temp_file"
     
