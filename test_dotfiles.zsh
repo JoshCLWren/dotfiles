@@ -174,10 +174,12 @@ prepare_test_environment() {
         "$DOTFILES_DIR/zshrc.local" > "$temp_file"
     
     # Source with best effort - don't fail if some things don't work
-    if source "$temp_file" 2>/dev/null; then
+    if source "$temp_file" 2>>"$LOG_FILE"; then
       print_success "Sourced zshrc.local (CI mode)"
     else
       print_warning "Partial config loading in CI - some features unavailable"
+      log "CI config source failed - some tests may fail"
+      log "Check $LOG_FILE for source errors"
     fi
     
     # Always ensure git utilities are available
