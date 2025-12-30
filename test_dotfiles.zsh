@@ -51,12 +51,18 @@ Options:
   --benchmark, -b      Run in benchmark mode (performance focus)
   --help, -h          Show this help message
 
-Available test suites:
-  basic_functionality  Test aliases and functions
-  performance         Benchmark startup time and lazy loading
-  compatibility       Test environment compatibility
-  integration         Test real-world usage scenarios
-  all                 Run all test suites (default)
+ Available test suites:
+   basic_functionality  Test aliases and functions
+   helper_scripts      Test helper scripts and pdbrc.py
+   aliases             Test all zsh aliases comprehensively
+   performance         Benchmark startup time and lazy loading
+   lazy_loading        Test lazy loading mechanisms
+   compatibility       Test environment compatibility
+   integration         Test real-world usage scenarios
+   python_environment  Test Python environment and UV integration
+   uv_functions        Test UV Python environment functions
+   work_utilities      Test work.zsh and git-large-file-fix utilities
+   all                 Run all test suites (default)
 
 Examples:
   $0                           # Run all tests
@@ -212,9 +218,15 @@ run_test_suite() {
     local func_name
     case "$test_name" in
       "basic_functionality") func_name="run_basic_tests" ;;
+      "helper_scripts") func_name="run_helper_scripts_tests" ;;
+      "aliases") func_name="run_aliases_tests" ;;
       "performance") func_name="run_performance_tests" ;;
+      "lazy_loading") func_name="run_lazy_loading_tests" ;;
       "compatibility") func_name="run_compatibility_tests" ;;
       "integration") func_name="run_integration_tests" ;;
+      "python_environment") func_name="run_python_environment_tests" ;;
+      "uv_functions") func_name="run_uv_functions_tests" ;;
+      "work_utilities") func_name="run_work_utilities_tests" ;;
       *) func_name="run_${test_name}_tests" ;;
     esac
     
@@ -306,9 +318,15 @@ run_benchmark_mode() {
 run_all_tests() {
   local test_suites=(
     "basic_functionality"
+    "aliases"
+    "lazy_loading"
+    "helper_scripts"
     "performance"
     "compatibility"
     "integration"
+    "python_environment"
+    "uv_functions"
+    "work_utilities"
   )
   
   local passed=0
