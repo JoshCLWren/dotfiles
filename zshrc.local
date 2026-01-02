@@ -754,6 +754,50 @@ uvnuke() {
   uvinstall
 }
 
+# Auto-activate .venv when entering Python project directories
+_auto_activate_venv() {
+  # Skip if direnv is handling this directory (has .envrc)
+  [[ -f .envrc ]] && return 0
+
+  local venv_path="$PWD/.venv"
+
+  # Check if .venv exists in current directory
+  if [[ -d "$venv_path" ]]; then
+    # Check if we're not already in this venv
+    if [[ "$VIRTUAL_ENV" != "$venv_path" ]]; then
+      # This is a Python project with .venv - activate it
+      source "$venv_path/bin/activate"
+    fi
+  else
+    # No .venv here - deactivate if we're in a venv and not in any parent .venv
+    if [[ -n "$VIRTUAL_ENV" ]]; then
+      # Check if current venv is for a parent directory
+      local parent_dir="$PWD"
+      local found_parent_venv=0
+
+      while [[ "$parent_dir" != "/" ]]; do
+        if [[ "$VIRTUAL_ENV" == "$parent_dir/.venv" ]]; then
+          found_parent_venv=1
+          break
+        fi
+        parent_dir="$(dirname "$parent_dir")"
+      done
+
+      # Deactivate if the venv isn't for current dir or parent
+      if [[ $found_parent_venv -eq 0 ]]; then
+        deactivate 2>/dev/null
+      fi
+    fi
+  fi
+}
+
+# Register the auto-activation hook
+autoload -U add-zsh-hook
+add-zsh-hook chpwd _auto_activate_venv
+
+# Run once on shell startup
+_auto_activate_venv
+
 # Deduplicate PATH entries while preserving order (must be at the very end)
 # This removes duplicates added by tools like pyenv, google-cloud-sdk, rbenv, etc.
 typeset -U path
