@@ -690,11 +690,19 @@ uvinstall() {
     echo "   Using requirements.txt workflow for compatibility..."
   fi
 
-  # Install from requirements files
-  [[ -f requirements.txt ]] && uv pip install --python "$venv" -r requirements.txt
-  [[ -f requirements-dev.txt ]] && uv pip install --python "$venv" -r requirements-dev.txt
-  [[ -f requirements-mikey.txt ]] && uv pip install --python "$venv" -r requirements-mikey.txt
-  [[ -f requirements-mikey-dev.txt ]] && uv pip install --python "$venv" -r requirements-mikey-dev.txt
+  # Install from requirements files (continue even if some packages fail to build)
+  if [[ -f requirements.txt ]]; then
+    uv pip install --python "$venv" -r requirements.txt || echo "⚠️  Some packages failed to install from requirements.txt"
+  fi
+  if [[ -f requirements-dev.txt ]]; then
+    uv pip install --python "$venv" -r requirements-dev.txt || echo "⚠️  Some packages failed to install from requirements-dev.txt"
+  fi
+  if [[ -f requirements-mikey.txt ]]; then
+    uv pip install --python "$venv" -r requirements-mikey.txt || echo "⚠️  Some packages failed to install from requirements-mikey.txt"
+  fi
+  if [[ -f requirements-mikey-dev.txt ]]; then
+    uv pip install --python "$venv" -r requirements-mikey-dev.txt || echo "⚠️  Some packages failed to install from requirements-mikey-dev.txt"
+  fi
 
   # Activate the venv
   source "$venv/bin/activate"
@@ -756,9 +764,6 @@ uvnuke() {
 
 # Auto-activate .venv when entering Python project directories
 _auto_activate_venv() {
-  # Skip if direnv is handling this directory (has .envrc)
-  [[ -f .envrc ]] && return 0
-
   local venv_path="$PWD/.venv"
 
   # Check if .venv exists in current directory
