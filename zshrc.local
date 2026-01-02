@@ -556,6 +556,13 @@ fi
 # Hijacks make targets locally for speed
 # ============================================================================
 
+# Read custom PyPI index from pip config (for private packages)
+if [[ -f ~/.config/pip/pip.conf ]] || [[ -f ~/.pip/pip.conf ]]; then
+  export UV_INDEX_URL=$(pip config get global.index-url 2>/dev/null || echo "https://pypi.org/simple")
+else
+  export UV_INDEX_URL="https://pypi.org/simple"
+fi
+
 make() {
   case "$1" in
     venv) shift; uvenv "$@" ;;
