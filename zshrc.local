@@ -566,14 +566,49 @@ make() {
   esac
 }
 
-# Detect if this is a uv project (has pyproject.toml with project metadata)
-_is_uv_project() {
+# Detect Python version from .python-version or .tool-versions (pyenv compatibility)
+_detect_python_version() {
+  # Check .python-version first (pyenv standard)
+  if [[ -f .python-version ]]; then
+    cat .python-version | head -1 | tr -d '[:space:]'
+    return 0
+  fi
+
+  # Check .tool-versions (asdf/mise compatibility)
+  if [[ -f .tool-versions ]]; then
+    grep '^python' .tool-versions | awk '{print $2}' | head -1
+    return 0
+  fi
+
+  # Default fallback
+  echo "3.11"
+}
+
+# Detect if this is a UV-native project (has uv.lock or tool.uv in pyproject.toml)
+_is_uv_native_project() {
+  # If uv.lock exists, it's definitely UV-native
+  [[ -f uv.lock ]] && return 0
+
+  # Check for [tool.uv] section in pyproject.toml
+  [[ -f pyproject.toml ]] && grep -q '^\[tool\.uv\]' pyproject.toml && return 0
+
+  return 1
+}
+
+# Detect if project has pyproject.toml with dependencies (might be team-managed)
+_has_pyproject_deps() {
   [[ -f pyproject.toml ]] && grep -q '^\[project\]' pyproject.toml
+}
+
+# Backward compatibility: _is_uv_project checks for any pyproject.toml with [project]
+# This is used by tests and for general "should we use .venv or ~/.venvs?" logic
+_is_uv_project() {
+  _is_uv_native_project || _has_pyproject_deps
 }
 
 # Get the venv path for the current project
 _get_venv_path() {
-  if _is_uv_project; then
+  if _is_uv_native_project || _has_pyproject_deps; then
     echo "$PWD/.venv"
   else
     echo "$HOME/.venvs/${PWD##*/}"
@@ -581,15 +616,18 @@ _get_venv_path() {
 }
 
 uvenv() {
-  local py="${1:-3.11}"
+  # Auto-detect Python version from project files, or use provided argument
+  local py="${1:-$(_detect_python_version)}"
   local name="${PWD##*/}"
 
-  if _is_uv_project; then
-    # Use local .venv for uv projects
+  if _is_uv_native_project || _has_pyproject_deps; then
+    # Use local .venv for projects with pyproject.toml
+    echo "Creating .venv with Python $py..."
     uv venv .venv --python "$py"
     source .venv/bin/activate
   else
     # Use ~/.venvs/ for traditional projects
+    echo "Creating venv in ~/.venvs/$name with Python $py..."
     mkdir -p ~/.venvs
     uv venv ~/.venvs/"$name" --python "$py"
     source ~/.venvs/"$name"/bin/activate
@@ -598,47 +636,60 @@ uvenv() {
 
 uvinstall() {
   local venv=$(_get_venv_path)
+  local py=$(_detect_python_version)
 
-  # Create venv if it doesn't exist
+  # Create venv if it doesn't exist (uses _is_uv_project logic)
   if [[ ! -d "$venv" ]]; then
-    echo "Creating venv at $venv..."
+    echo "Creating venv at $venv with Python $py..."
     if _is_uv_project; then
-      uv venv .venv
+      uv venv .venv --python "$py"
     else
       mkdir -p ~/.venvs
-      uv venv "$venv"
+      uv venv "$venv" --python "$py"
     fi
   fi
 
-  # For uv projects, use uv sync (handles pyproject.toml)
-  if _is_uv_project; then
+  # UV-native projects: use uv sync
+  if _is_uv_native_project; then
+    echo "📦 UV-native project detected (using uv sync)..."
     # Temporarily unset VIRTUAL_ENV to avoid mismatch warnings
     local old_venv="$VIRTUAL_ENV"
     unset VIRTUAL_ENV
 
-    # Initialize if not already done
+    # Only init if uv.lock is missing AND pyproject.toml looks incomplete
     if [[ ! -f uv.lock ]]; then
-      echo "Initializing uv project..."
-      uv init --no-readme 2>/dev/null || true
+      if ! grep -q '^\[project\.dependencies\]' pyproject.toml 2>/dev/null; then
+        echo "⚠️  No uv.lock found and pyproject.toml looks incomplete."
+        echo "   Run 'uv init' manually if you want to initialize this as a UV project."
+      fi
     fi
 
     # Sync dependencies
-    uv sync
-
-    # Restore and activate the correct venv
-    export VIRTUAL_ENV="$venv"
-    source "$venv/bin/activate"
-  else
-    # Legacy requirements.txt workflow
-    [[ -f requirements.txt ]] && uv pip install --python "$venv" -r requirements.txt
-    [[ -f requirements-dev.txt ]] && uv pip install --python "$venv" -r requirements-dev.txt
-    [[ -f requirements-mikey.txt ]] && uv pip install --python "$venv" -r requirements-mikey.txt
-    [[ -f requirements-mikey-dev.txt ]] && uv pip install --python "$venv" -r requirements-mikey-dev.txt
-
-    # Activate the venv
-    source "$venv/bin/activate"
+    if uv sync 2>/dev/null; then
+      export VIRTUAL_ENV="$venv"
+      source "$venv/bin/activate"
+      echo "✅ Venv activated: $venv"
+      return 0
+    else
+      echo "⚠️  uv sync failed, falling back to requirements.txt..."
+      export VIRTUAL_ENV="$old_venv"
+    fi
   fi
 
+  # Team pyenv projects or legacy: use requirements.txt
+  if _has_pyproject_deps && [[ ! -f uv.lock ]]; then
+    echo "📦 Team project detected (pyproject.toml without uv.lock)"
+    echo "   Using requirements.txt workflow for compatibility..."
+  fi
+
+  # Install from requirements files
+  [[ -f requirements.txt ]] && uv pip install --python "$venv" -r requirements.txt
+  [[ -f requirements-dev.txt ]] && uv pip install --python "$venv" -r requirements-dev.txt
+  [[ -f requirements-mikey.txt ]] && uv pip install --python "$venv" -r requirements-mikey.txt
+  [[ -f requirements-mikey-dev.txt ]] && uv pip install --python "$venv" -r requirements-mikey-dev.txt
+
+  # Activate the venv
+  source "$venv/bin/activate"
   echo "✅ Venv activated: $venv"
 }
 
@@ -656,20 +707,34 @@ uvcompile() {
 uvupdate() {
   local venv=$(_get_venv_path)
 
-  if _is_uv_project; then
-    # For uv projects, use uv lock --upgrade
+  if _is_uv_native_project; then
+    # UV-native projects: use uv lock --upgrade
+    echo "📦 Updating UV-native project..."
     uv lock --upgrade
     uv sync
   else
-    # Legacy workflow
-    [[ -f requirements.in ]] && uv pip compile requirements.in -o requirements.txt --upgrade
-    [[ -f requirements-dev.in ]] && uv pip compile requirements-dev.in -o requirements-dev.txt --upgrade
-    uv pip sync --python "$venv" requirements*.txt
+    # Team/legacy workflow: compile requirements.in or upgrade requirements.txt
+    echo "📦 Updating dependencies (requirements.txt workflow)..."
+
+    if [[ -f requirements.in ]]; then
+      # pip-tools workflow: recompile .in files
+      uv pip compile requirements.in -o requirements.txt --upgrade
+      [[ -f requirements-dev.in ]] && uv pip compile requirements-dev.in -o requirements-dev.txt --upgrade
+    fi
+
+    # Install updated dependencies
+    [[ -f requirements.txt ]] && uv pip install --python "$venv" -r requirements.txt --upgrade
+    [[ -f requirements-dev.txt ]] && uv pip install --python "$venv" -r requirements-dev.txt --upgrade
+    [[ -f requirements-mikey.txt ]] && uv pip install --python "$venv" -r requirements-mikey.txt --upgrade
+    [[ -f requirements-mikey-dev.txt ]] && uv pip install --python "$venv" -r requirements-mikey-dev.txt --upgrade
   fi
+
+  echo "✅ Dependencies updated"
 }
 
 uvsetup() {
-  uvenv "${1:-3.11}"
+  # Auto-detect Python version, or use provided argument
+  uvenv "${1:-$(_detect_python_version)}"
   uvinstall
 }
 
