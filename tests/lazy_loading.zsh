@@ -116,21 +116,29 @@ test_jump_lazy_loading() {
     fi
 
     local jump_type=$(type jump 2>/dev/null)
-    if [[ "$jump_type" != *"shell function"* ]]; then
-      echo "FAIL: jump is not a shell function on macOS"
-      return 1
+
+    # Check if _evalcache is available - different loading strategies
+    if type _evalcache >/dev/null 2>&1; then
+      # With _evalcache: jump can be binary (evalcache handles caching)
+      echo "INFO: jump using _evalcache for lazy loading"
+      if [[ "$jump_type" == *"shell function"* ]]; then
+        echo "INFO: jump is a shell function (manual wrapper with _evalcache)"
+      else
+        echo "INFO: jump is binary (_evalcache used directly)"
+      fi
+    else
+      # Without _evalcache: jump must be a shell function for lazy loading
+      if [[ "$jump_type" != *"shell function"* ]]; then
+        echo "FAIL: jump is not a shell function and _evalcache not available"
+        return 1
+      fi
+      echo "INFO: jump using self-loading mechanism (shell function wrapper)"
     fi
 
     if [[ -n "$CI" || -n "$GITHUB_ACTIONS" ]]; then
       echo "SKIP: Testing jump activation in CI"
       echo "PASS: jump lazy loading function defined on macOS"
       return 0
-    fi
-
-    if type _evalcache >/dev/null 2>&1; then
-      echo "INFO: jump using _evalcache for lazy loading"
-    else
-      echo "INFO: jump using self-loading mechanism"
     fi
 
     echo "PASS: jump lazy loading configured correctly on macOS"

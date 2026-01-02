@@ -197,7 +197,8 @@ esac
 
 unset -f source_first_existing
 # Editor setting
-export EDITOR="code -w"
+export VISUAL=vim
+export EDITOR=vim
 
 # History configuration
 HISTSIZE=5000
