@@ -566,6 +566,11 @@ else
   export UV_INDEX_URL="https://pypi.org/simple"
 fi
 
+# Rate limit UV to avoid overwhelming private PyPI servers
+# UV is very fast and can hammer servers with parallel requests
+export UV_CONCURRENT_DOWNLOADS=4  # Limit parallel downloads (default: 50)
+export UV_CONCURRENT_INSTALLS=2   # Limit parallel installs (default: 50)
+
 make() {
   case "$1" in
     venv) shift; uvenv "$@" ;;
