@@ -314,12 +314,12 @@ test_uv_project_scenarios() {
   local test_dir=$(mktemp -d)
   cd "$test_dir" || { echo "FAIL: Could not enter test directory"; return 1; }
 
-  # Scenario 1: Traditional project with requirements.txt
+  # Scenario 1: Traditional project with requirements.txt (now uses .venv for UV speed)
   touch requirements.txt
   local venv_path=$(_get_venv_path)
-  local expected="$HOME/.venvs/${PWD##*/}"
+  local expected="$PWD/.venv"
   if [[ "$venv_path" != "$expected" ]]; then
-    echo "FAIL: Traditional project should use ~/.venvs/"
+    echo "FAIL: Traditional Python project should use .venv for UV compatibility"
     cd - >/dev/null
     rm -rf "$test_dir"
     return 1

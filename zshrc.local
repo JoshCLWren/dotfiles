@@ -607,10 +607,17 @@ _is_uv_project() {
 }
 
 # Get the venv path for the current project
+# Always use .venv locally for UV compatibility (better performance, auto-detection)
+# Use ~/.venvs only for legacy projects without any project metadata
 _get_venv_path() {
   if _is_uv_native_project || _has_pyproject_deps; then
+    # UV-native or team projects: use .venv for full UV functionality
+    echo "$PWD/.venv"
+  elif [[ -f requirements.txt ]] || [[ -f requirements.in ]]; then
+    # Legacy Python projects with requirements: use .venv for UV speed
     echo "$PWD/.venv"
   else
+    # Non-Python or ad-hoc projects: use ~/.venvs
     echo "$HOME/.venvs/${PWD##*/}"
   fi
 }
@@ -618,15 +625,16 @@ _get_venv_path() {
 uvenv() {
   # Auto-detect Python version from project files, or use provided argument
   local py="${1:-$(_detect_python_version)}"
-  local name="${PWD##*/}"
+  local venv=$(_get_venv_path)
 
-  if _is_uv_native_project || _has_pyproject_deps; then
-    # Use local .venv for projects with pyproject.toml
+  if [[ "$venv" == "$PWD/.venv" ]]; then
+    # Use local .venv for better UV compatibility
     echo "Creating .venv with Python $py..."
     uv venv .venv --python "$py"
     source .venv/bin/activate
   else
-    # Use ~/.venvs/ for traditional projects
+    # Use ~/.venvs/ only for ad-hoc/non-Python projects
+    local name="${PWD##*/}"
     echo "Creating venv in ~/.venvs/$name with Python $py..."
     mkdir -p ~/.venvs
     uv venv ~/.venvs/"$name" --python "$py"
