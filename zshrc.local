@@ -577,8 +577,32 @@ make() {
     deps-install) uvinstall ;;
     deps-update) uvupdate ;;
     deps-compile) shift; uvcompile "$@" ;;
+    lint) _dotfiles_lint ;;
     *) command make "$@" ;;
   esac
+}
+
+# Override make lint to exclude .venv and other generated directories
+_dotfiles_lint() {
+  echo "Checking shell script syntax..."
+  for file in *.zsh test_dotfiles.zsh tests/*.zsh; do
+    if [ -f "$file" ]; then
+      echo "Checking $file..."
+      zsh -n "$file" || return 1
+    fi
+  done
+  echo "All shell scripts pass syntax check"
+
+  # Check Python files if pylint is available
+  if command -v pylint >/dev/null 2>&1; then
+    echo ""
+    echo "Running pylint on Python files..."
+    find . -path ./.venv -prune -o -path ./.gcloud-auth-venv -prune -o -path ./zsh-git-prompt -prune -o -path ./.direnv -prune -o -path ./.eggs -prune -o -path ./build -prune -o -name '*.py' -type f -exec pylint {} +
+    echo "pylint looks good!"
+  else
+    echo ""
+    echo "Skipping Python linting (pylint not installed)"
+  fi
 }
 
 # Detect Python version from .python-version or .tool-versions (pyenv compatibility)
