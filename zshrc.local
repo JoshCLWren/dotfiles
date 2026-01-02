@@ -557,8 +557,11 @@ fi
 # ============================================================================
 
 # Read custom PyPI index from pip config (for private packages)
-if [[ -f ~/.config/pip/pip.conf ]] || [[ -f ~/.pip/pip.conf ]]; then
-  export UV_INDEX_URL=$(pip config get global.index-url 2>/dev/null || echo "https://pypi.org/simple")
+# Read directly from config file instead of using pip command (which may not be available yet)
+if [[ -f ~/.pip/pip.conf ]]; then
+  export UV_INDEX_URL=$(grep '^index-url' ~/.pip/pip.conf | awk '{print $3}' || echo "https://pypi.org/simple")
+elif [[ -f ~/.config/pip/pip.conf ]]; then
+  export UV_INDEX_URL=$(grep '^index-url' ~/.config/pip/pip.conf | awk '{print $3}' || echo "https://pypi.org/simple")
 else
   export UV_INDEX_URL="https://pypi.org/simple"
 fi
@@ -739,11 +742,10 @@ uvupdate() {
     # Team/legacy workflow: compile requirements.in or upgrade requirements.txt
     echo "📦 Updating dependencies (requirements.txt workflow)..."
 
-    if [[ -f requirements.in ]]; then
-      # pip-tools workflow: recompile .in files
-      uv pip compile requirements.in -o requirements.txt --upgrade
-      [[ -f requirements-dev.in ]] && uv pip compile requirements-dev.in -o requirements-dev.txt --upgrade
-    fi
+    # pip-tools workflow: recompile all .in files to .txt
+    for req_in in requirements*.in; do
+      [[ -f "$req_in" ]] && uv pip compile "$req_in" -o "${req_in%.in}.txt" --upgrade
+    done
 
     # Install updated dependencies
     [[ -f requirements.txt ]] && uv pip install --python "$venv" -r requirements.txt --upgrade
