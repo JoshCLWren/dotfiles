@@ -623,12 +623,15 @@ _detect_python_version() {
   echo "3.11"
 }
 
-# Detect if this is a UV-native project (has uv.lock or tool.uv in pyproject.toml)
+# Detect if this is a UV-native project (has uv.lock AND project table in pyproject.toml)
 _is_uv_native_project() {
-  # If uv.lock exists, it's definitely UV-native
-  [[ -f uv.lock ]] && return 0
+  # UV-native projects must have BOTH uv.lock and [project] table in pyproject.toml
+  # A minimal uv.lock without [project] means it's still a requirements.in workflow
+  if [[ -f uv.lock ]] && [[ -f pyproject.toml ]]; then
+    grep -q '^\[project\]' pyproject.toml && return 0
+  fi
 
-  # Check for [tool.uv] section in pyproject.toml
+  # Also check for [tool.uv] section in pyproject.toml (alternative UV setup)
   [[ -f pyproject.toml ]] && grep -q '^\[tool\.uv\]' pyproject.toml && return 0
 
   return 1
@@ -751,11 +754,11 @@ uvinstall() {
 uvcompile() {
   local pkg="$1"
   if [[ -n "$pkg" ]]; then
-    [[ -f requirements.in ]] && uv pip compile requirements.in -o requirements.txt -P "$pkg"
-    [[ -f requirements-dev.in ]] && uv pip compile requirements-dev.in -o requirements-dev.txt -P "$pkg"
+    [[ -f requirements.in ]] && uv pip compile requirements.in -o requirements.txt -P "$pkg" --custom-compile-command "pip-compile requirements.in" --emit-index-url
+    [[ -f requirements-dev.in ]] && uv pip compile requirements-dev.in -o requirements-dev.txt -P "$pkg" --custom-compile-command "pip-compile requirements-dev.in" --emit-index-url
   else
-    [[ -f requirements.in ]] && uv pip compile requirements.in -o requirements.txt
-    [[ -f requirements-dev.in ]] && uv pip compile requirements-dev.in -o requirements-dev.txt
+    [[ -f requirements.in ]] && uv pip compile requirements.in -o requirements.txt --custom-compile-command "pip-compile requirements.in" --emit-index-url
+    [[ -f requirements-dev.in ]] && uv pip compile requirements-dev.in -o requirements-dev.txt --custom-compile-command "pip-compile requirements-dev.in" --emit-index-url
   fi
 }
 
@@ -771,10 +774,11 @@ uvupdate() {
     # Team/legacy workflow: compile requirements.in or upgrade requirements.txt
     echo "📦 Updating dependencies (requirements.txt workflow)..."
 
-    # pip-tools workflow: recompile all .in files to .txt
-    for req_in in requirements*.in; do
-      [[ -f "$req_in" ]] && uv pip compile "$req_in" -o "${req_in%.in}.txt" --upgrade
-    done
+    # pip-tools workflow: compile in correct order to respect constraints
+    [[ -f requirements.in ]] && uv pip compile requirements.in -o requirements.txt --upgrade --custom-compile-command "pip-compile requirements.in" --emit-index-url
+    [[ -f requirements-mikey.in ]] && uv pip compile requirements-mikey.in -o requirements-mikey.txt --upgrade --custom-compile-command "pip-compile requirements-mikey.in" --emit-index-url
+    [[ -f requirements-dev.in ]] && uv pip compile requirements-dev.in -o requirements-dev.txt --upgrade --custom-compile-command "pip-compile requirements-dev.in" --emit-index-url
+    [[ -f requirements-mikey-dev.in ]] && uv pip compile requirements-mikey-dev.in -o requirements-mikey-dev.txt --upgrade --custom-compile-command "pip-compile requirements-mikey-dev.in" --emit-index-url
 
     # Install updated dependencies
     [[ -f requirements.txt ]] && uv pip install --python "$venv" -r requirements.txt --upgrade
