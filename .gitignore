@@ -5,4 +5,5 @@ test_results.log
 .gcloud-auth-venv/
 diff.log
 commit.txt
+.secrets.zsh.local
 

@@ -56,6 +56,13 @@ install:
 		cp ~/.zshrc ~/.zshrc.backup; \
 	fi
 	@echo "source $(PWD)/zshrc.local" >> ~/.zshrc
+	@mkdir -p ~/.config/zed
+	@if [ -e ~/.config/zed/settings.json ] && [ ! -L ~/.config/zed/settings.json ]; then \
+		echo "Backing up existing ~/.config/zed/settings.json to settings.json.backup"; \
+		mv ~/.config/zed/settings.json ~/.config/zed/settings.json.backup; \
+	fi
+	@ln -sfn $(PWD)/zed/settings.json ~/.config/zed/settings.json
+	@echo "Linked zed/settings.json → ~/.config/zed/settings.json"
 	@echo "Dotfiles installed. Restart your shell or run 'exec zsh'"
 
 lint:

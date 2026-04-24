@@ -1,0 +1,67 @@
+{
+  "project_panel": {
+    "dock": "left"
+  },
+  "outline_panel": {
+    "dock": "left"
+  },
+  "collaboration_panel": {
+    "dock": "left"
+  },
+  "agent": {
+    "dock": "right",
+    "favorite_models": [],
+    "model_parameters": []
+  },
+  "git_panel": {
+    "dock": "left"
+  },
+  "minimum_contrast_for_highlights": 46.0,
+  "agent_ui_font_size": 16.0,
+  "ui_font_size": 16.0,
+  "buffer_font_size": 16.0,
+  "on_last_window_closed": "quit_app",
+  "when_closing_with_no_tabs": "close_window",
+  "agent_servers": {
+    "Claude Code": {
+      "type": "custom",
+      "command": "npx",
+      "args": ["acp-claude-code"],
+    },
+  },
+  "theme": "Monokai-og",
+  "edit_predictions": {
+    "provider": "copilot",
+    "mode": "eager",
+  },
+  "autosave": "on_focus_change",
+  "terminal": {
+    "env": {
+      "PYTEST_ADDOPTS": "-sv --no-cov",
+    },
+  },
+  "languages": {
+    "Python": {
+      "language_servers": ["ruff"],
+      "formatter": {
+        "language_server": { "name": "ruff" }
+      },
+    },
+    "CSharp": {
+      "language_servers": ["roslyn"],
+    },
+    "TypeScript": {
+      "language_servers": ["typescript-language-server"],
+    },
+    "TSX": {
+      "language_servers": ["typescript-language-server"],
+    },
+    "Go": {
+      "language_servers": ["gopls"],
+    },
+  },
+  "lsp": {},
+  "buffer_font_features": {
+    "calt": false,
+  },
+}

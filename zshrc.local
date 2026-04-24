@@ -65,13 +65,12 @@ path=(
 unset _mac_paths _dotfiles_path
 
 # Initialize pyenv if available
-# Disabled - using uv venvs instead
-# if command -v pyenv 1>/dev/null 2>&1; then
-#     # Ensure no existing pyenv function conflicts
-#     unset -f pyenv 2>/dev/null || true
-#     eval "$(pyenv init -)"
-#     eval "$(pyenv virtualenv-init -)"
-# fi
+if command -v pyenv 1>/dev/null 2>&1; then
+    # Ensure no existing pyenv function conflicts
+    unset -f pyenv 2>/dev/null || true
+    eval "$(pyenv init -)"
+    eval "$(pyenv virtualenv-init -)"
+fi
 
 # Initialize rbenv if available
 if command -v rbenv 1>/dev/null 2>&1; then
@@ -571,39 +570,16 @@ fi
 export UV_CONCURRENT_DOWNLOADS=4  # Limit parallel downloads (default: 50)
 export UV_CONCURRENT_INSTALLS=2   # Limit parallel installs (default: 50)
 
-make() {
-  case "$1" in
-    venv) shift; uvenv "$@" ;;
-    deps-install) uvinstall ;;
-    deps-update) uvupdate ;;
-    deps-compile) shift; uvcompile "$@" ;;
-    lint) _dotfiles_lint ;;
-    *) command make "$@" ;;
-  esac
-}
+# make() {
+#   case "$1" in
+#     venv) shift; uvenv "$@" ;;
+#     deps-install) uvinstall ;;
+#     deps-update) uvupdate ;;
+#     deps-compile) shift; uvcompile "$@" ;;
+#     *) command make "$@" ;;
+#   esac
+# }
 
-# Override make lint to exclude .venv and other generated directories
-_dotfiles_lint() {
-  echo "Checking shell script syntax..."
-  for file in *.zsh test_dotfiles.zsh tests/*.zsh; do
-    if [ -f "$file" ]; then
-      echo "Checking $file..."
-      zsh -n "$file" || return 1
-    fi
-  done
-  echo "All shell scripts pass syntax check"
-
-  # Check Python files if pylint is available
-  if command -v pylint >/dev/null 2>&1; then
-    echo ""
-    echo "Running pylint on Python files..."
-    find . -path ./.venv -prune -o -path ./.gcloud-auth-venv -prune -o -path ./zsh-git-prompt -prune -o -path ./.direnv -prune -o -path ./.eggs -prune -o -path ./build -prune -o -name '*.py' -type f -exec pylint {} +
-    echo "pylint looks good!"
-  else
-    echo ""
-    echo "Skipping Python linting (pylint not installed)"
-  fi
-}
 
 # Detect Python version from .python-version or .tool-versions (pyenv compatibility)
 _detect_python_version() {
@@ -620,7 +596,7 @@ _detect_python_version() {
   fi
 
   # Default fallback
-  echo "3.11"
+  echo "3.13"
 }
 
 # Detect if this is a UV-native project (has uv.lock AND project table in pyproject.toml)
@@ -849,3 +825,8 @@ _auto_activate_venv
 # This removes duplicates added by tools like pyenv, google-cloud-sdk, rbenv, etc.
 typeset -U path
 export PATH
+export PATH="$PATH:$HOME/fvm/bin:$HOME/fvm/default/bin"
+export PATH="$PATH:$HOME/.pub-cache/bin"
+
+# Load machine-local secrets (GITLAB_TOKEN, REPOSITORY_TOKEN, etc.) if present
+[[ -f "$HOME/dotfiles/.secrets.zsh.local" ]] && source "$HOME/dotfiles/.secrets.zsh.local"
