@@ -35,7 +35,14 @@ if [[ "$DOTFILES_OS" == "macos" ]]; then
   )
 fi
 
-_dotfiles_path=(
+_dotfiles_path=()
+# Homebrew must precede the system dirs, or `bash` resolves to /bin's ancient
+# 3.2 instead of Homebrew's 5.x (and likewise curl, etc.). pyenv/rbenv/nvm shims
+# below still prepend in front of this, so language versions are unaffected.
+if [[ "$DOTFILES_OS" == "macos" ]]; then
+  _dotfiles_path+=("${_mac_paths[@]}")
+fi
+_dotfiles_path+=(
   # System paths
   "/usr/local/bin"
   "/usr/bin"
@@ -43,9 +50,6 @@ _dotfiles_path=(
   "/usr/sbin"
   "/sbin"
 )
-if [[ "$DOTFILES_OS" == "macos" ]]; then
-  _dotfiles_path+=("${_mac_paths[@]}")
-fi
 _dotfiles_path+=(
   # Additional paths
   "$HOME/.codeium/windsurf/bin"
@@ -58,6 +62,7 @@ _dotfiles_path+=(
   "$GOPATH/bin"
   "$HOME/code/youversion/yv/bin"
 )
+typeset -U path PATH   # keep PATH duplicate-free (first occurrence wins)
 path=(
   "${_dotfiles_path[@]}"
   $path[@]
@@ -390,18 +395,6 @@ elif [[ "$DOTFILES_OS" == "linux" ]] && command -v zoxide >/dev/null 2>&1; then
   # Use zoxide on Linux
   eval "$(zoxide init zsh)"
   alias j='z'  # Alias j to zoxide's z for consistency with macOS
-fi
-
-if command -v fnm >/dev/null 2>&1; then
-  if command -v _evalcache >/dev/null 2>&1; then
-    _evalcache fnm env --use-on-cd
-  else
-    fnm() {
-      unfunction fnm
-      eval "$(command fnm env --use-on-cd)"
-      fnm "$@"
-    }
-  fi
 fi
 
 # Source Google Cloud SDK
