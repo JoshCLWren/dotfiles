@@ -3,6 +3,7 @@
   "env": {
     "ENABLE_LSP_TOOL": "1"
   },
+  "includeCoAuthoredBy": false,
   "permissions": {
     "allow": [
       "WebSearch",
@@ -16,6 +17,42 @@
     "defaultMode": "auto"
   },
   "model": "opus[1m]",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/dotfiles/.claude/hooks/py-autoformat.sh\"",
+            "statusMessage": "Formatting Python\u2026"
+          },
+          {
+            "type": "command",
+            "command": "\"$HOME/dotfiles/.claude/hooks/lint-after-edit.sh\"",
+            "timeout": 90,
+            "statusMessage": "Linting\u2026"
+          },
+          {
+            "type": "command",
+            "command": "jq -c 'if ((.tool_input.file_path // \"\") | endswith(\".py\")) then {hookSpecificOutput:{hookEventName:\"PostToolUse\",additionalContext:\"Comment check (repo CLAUDE.md bans narrative comments): re-read the comments you just wrote. Keep ONLY non-obvious WHY, complex-algorithm notes, or TODO/FIXME. Delete any comment that restates WHAT the line below it does; prefer encoding intent in names.\"}} else empty end' 2>/dev/null || true"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$HOME/dotfiles/.claude/hooks/block-gitlab-flat-position.sh\"",
+            "statusMessage": "Checking GitLab MR comment shape\u2026"
+          }
+        ]
+      }
+    ]
+  },
   "statusLine": {
     "type": "command",
     "command": "npx -y ccstatusline@latest",
@@ -25,18 +62,24 @@
     "pyright-lsp@claude-plugins-official": true,
     "code-simplifier@claude-plugins-official": true,
     "context7@claude-plugins-official": true,
-    "atlassian@claude-plugins-official": true,
-    "gitlab@claude-plugins-official": true,
+    "atlassian@claude-plugins-official": false,
+    "gitlab@claude-plugins-official": false,
     "sentry@claude-plugins-official": true,
-    "Notion@claude-plugins-official": true,
     "commit-commands@claude-plugins-official": true,
-    "playwright@claude-plugins-official": true,
+    "playwright@claude-plugins-official": false,
     "notion@claude-plugins-official": true
   },
   "alwaysThinkingEnabled": true,
-  "effortLevel": "high",
+  "effortLevel": "medium",
+  "voice": {
+    "enabled": true,
+    "mode": "hold"
+  },
   "skipDangerousModePermissionPrompt": true,
+  "skipWorkflowUsageWarning": true,
+  "agentPushNotifEnabled": true,
   "skipAutoPermissionPrompt": true,
+  "voiceEnabled": true,
   "feedbackSurveyState": {
     "lastShownTime": 1754592136381
   }

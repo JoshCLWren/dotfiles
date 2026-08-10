@@ -1,4 +1,12 @@
 {
+  "disable_ai": true,
+  "tab_size": 2,
+  "agent_servers": {
+    "claude-acp": {
+      "type": "registry"
+    }
+  },
+  "cli_default_open_behavior": "existing_window",
   "project_panel": {
     "dock": "left"
   },
@@ -22,13 +30,6 @@
   "buffer_font_size": 16.0,
   "on_last_window_closed": "quit_app",
   "when_closing_with_no_tabs": "close_window",
-  "agent_servers": {
-    "Claude Code": {
-      "type": "custom",
-      "command": "npx",
-      "args": ["acp-claude-code"],
-    },
-  },
   "theme": "Monokai-og",
   "edit_predictions": {
     "provider": "copilot",
@@ -42,7 +43,7 @@
   },
   "languages": {
     "Python": {
-      "language_servers": ["ruff"],
+      "language_servers": ["ty", "ruff"],
       "formatter": {
         "language_server": { "name": "ruff" }
       },
@@ -60,7 +61,20 @@
       "language_servers": ["gopls"],
     },
   },
-  "lsp": {},
+  "lsp": {
+    "ruff": {
+      "initialization_options": {
+        "settings": {
+          "configuration": "/Users/joshwren/code/youversion/yv-standards/yv_standards/configs/base.toml",
+        },
+      },
+    },
+    "ty": {
+      "settings": {
+        "configurationFile": "/Users/joshwren/code/youversion/yv-standards/yv_standards/configs/ty.toml",
+      },
+    },
+  },
   "buffer_font_features": {
     "calt": false,
   },
