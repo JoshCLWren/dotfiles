@@ -16,7 +16,7 @@
     ],
     "defaultMode": "auto"
   },
-  "model": "opus[1m]",
+  "model": "opus",
   "hooks": {
     "PostToolUse": [
       {
@@ -25,13 +25,13 @@
           {
             "type": "command",
             "command": "\"$HOME/dotfiles/.claude/hooks/py-autoformat.sh\"",
-            "statusMessage": "Formatting Python\u2026"
+            "statusMessage": "Formatting Python…"
           },
           {
             "type": "command",
             "command": "\"$HOME/dotfiles/.claude/hooks/lint-after-edit.sh\"",
             "timeout": 90,
-            "statusMessage": "Linting\u2026"
+            "statusMessage": "Linting…"
           },
           {
             "type": "command",
@@ -47,7 +47,7 @@
           {
             "type": "command",
             "command": "\"$HOME/dotfiles/.claude/hooks/block-gitlab-flat-position.sh\"",
-            "statusMessage": "Checking GitLab MR comment shape\u2026"
+            "statusMessage": "Checking GitLab MR comment shape…"
           }
         ]
       }
@@ -67,10 +67,12 @@
     "sentry@claude-plugins-official": true,
     "commit-commands@claude-plugins-official": true,
     "playwright@claude-plugins-official": false,
-    "notion@claude-plugins-official": true
+    "notion@claude-plugins-official": true,
+    "swift-lsp@claude-plugins-official": true
   },
+  "outputStyle": "Low strain",
   "alwaysThinkingEnabled": true,
-  "effortLevel": "medium",
+  "effortLevel": "high",
   "voice": {
     "enabled": true,
     "mode": "hold"
@@ -79,6 +81,45 @@
   "skipWorkflowUsageWarning": true,
   "agentPushNotifEnabled": true,
   "skipAutoPermissionPrompt": true,
+  "autoMode": {
+    "allow": [
+      "$defaults",
+      "Bash(glab mr list:*)",
+      "Bash(glab mr view:*)"
+    ],
+    "soft_deny": [
+      "$defaults",
+      "Bash(bq rm:*)",
+      "Bash(kubectl delete:*)"
+    ],
+    "environment": [
+      "### Org-wide",
+      "**Organization**: None configured",
+      "**Cloud provider(s)**: Google Cloud Platform (BigQuery, GCS, GKE — per CLAUDE.md and bq/gcloud/kubectl usage)",
+      "**Repository visibility**: assume private unless the remote host and repo name indicate otherwise, or a visibility check in the transcript shows public — not queryable here (no remotes configured for this checkout)",
+      "**Internal sharing / snippet hosting**: None configured — treat public paste/gist services as outside the trust boundary",
+      "**Secrets management**: External Secrets on Kubernetes (cluster_external_secret.yaml, secret_store.yaml, secrets.yaml patterns in Helm charts) — treat as infra-managed, not a task credential source",
+      "**Default / protected branches**: not queryable here (repo visibility & branch protection check unavailable — no derivable owner/repo from origin remote)",
+      "**CI/CD deploy targets**: None configured",
+      "**Network posture**: None configured",
+      "**Host containment**: None configured — assume Claude Code runs on an ordinary developer machine with open internet",
+      "**Source control**: The trusted repo and its remote(s) only (no additional orgs configured) — this checkout currently has no remotes configured",
+      "**Trusted internal domains**: *.youversionapi.com, *.youversionapistaging.com, bible.com, www.bible.com (per Hosts contacted in this project's transcripts)",
+      "**Trusted cloud buckets**: None configured — no bucket name was both usage-corroborated (Cloud buckets touched) and clearly org-identifying enough to adopt as a blanket trust entry; yv-content-assets-staging (config-derived — not a confirmed upload destination; uploads of local data still require confirmation)",
+      "**Key internal services**: content, bible, organizations, videos, presentation, movies, reading-plans (per *.youversionapi.com / *.youversionapistaging.com subdomains seen in this project's transcripts)",
+      "**Internal package registry**: pypi.thewardro.be (seen 8× in this project's transcripts)",
+      "**Sensitive data locations & audiences**: any file or store holding personal data, confidential business data, credentials, regulated data, or similarly sensitive material; preserve exact handles when known and share only with audiences cleared at the [named+specifics] bar. In this repo: .envrc files, yoyo/prod.ini files, Helm secret templates (secret_store.yaml, secrets.yaml, cluster_external_secret.yaml), and .env.production/.env.staging files across service directories",
+      "**Data retention / declassification**: None configured",
+      "**Sensitive remote targets**: any namespace, host, or container whose name carries prod or production as a whole word or name segment — e.g. abel-infrastructure/terraform/production/*, yoyo/prod.ini, guidedprayer-prod, animations-prod, yv-ml-prod-bigquery-export (config-derived — not a confirmed upload destination; uploads of local data still require confirmation)",
+      "**Protected deployment namespaces / environments**: None configured — fall back to the Sensitive remote targets heuristic",
+      "**Protected IaC scopes**: IAM, RBAC, networking, quota, and node-pool resources; anything whose name or tag carries prod or production as a whole word or name segment — e.g. abel-infrastructure/terraform/production/*.tf",
+      "### User-specific",
+      "**Primary use of Claude Code**: software development (YouVersion monorepo — Python/FastAPI, Go, TypeScript/Next.js services)",
+      "**Trusted repo**: The git repository at /Users/joshwren/code/youversion (its working directory) — no remotes are currently configured for this checkout, so remote-scoped trust cannot be established; treat pushes as unverified until a remote is added",
+      "**Org-specific CLIs**: glab (GitLab MRs), acli (Jira, project PAR / Sunday Best squad per ~/.claude/CLAUDE.md), bq (BigQuery), yv (internal wrapper CLI seen heavily in shell history)",
+      "**Routine under Josh's prefix**: MR/PR URL lookups via `glab mr list --source-branch <branch>`; Jira ticket creation/search via acli scoped to project PAR / team Sunday Best (per ~/.claude/CLAUDE.md) — routine, not requiring confirmation each time"
+    ]
+  },
   "voiceEnabled": true,
   "feedbackSurveyState": {
     "lastShownTime": 1754592136381
