@@ -1,90 +1,20 @@
 #!/usr/bin/env zsh
 # Python environment tests for dotfiles
 
-test_python_version_file_detection() {
-  echo "Testing .python-version file detection..."
+test_auto_activate_uv_venv() {
+  echo "Testing _auto_activate_uv_venv..."
 
-  local failed=0
-  local test_dir="/tmp/test_dotfiles_python_version.$$"
-  mkdir -p "$test_dir"
-
-  # Test 1: .python-version file in current directory
-  cd "$test_dir"
-  echo "3.11.0" > .python-version
-  local result=$(find_python_version_file)
-  if [[ "$result" == "$test_dir/.python-version" ]]; then
-    echo "PASS: Found .python-version in current directory"
-  else
-    echo "FAIL: Expected $test_dir/.python-version, got $result"
-    ((failed++))
-  fi
-
-  # Test 2: .python-version file in parent directory
-  mkdir -p "$test_dir/subdir/nested"
-  cd "$test_dir/subdir/nested"
-  result=$(find_python_version_file)
-  if [[ "$result" == "$test_dir/.python-version" ]]; then
-    echo "PASS: Found .python-version in parent directory"
-  else
-    echo "FAIL: Expected $test_dir/.python-version, got $result"
-    ((failed++))
-  fi
-
-  # Test 3: No .python-version file
-  rm -f "$test_dir/.python-version"
-  result=$(find_python_version_file)
-  if [[ -z "$result" ]]; then
-    echo "PASS: Correctly returns empty when no .python-version exists"
-  else
-    echo "FAIL: Expected empty result, got $result"
-    ((failed++))
-  fi
-
-  # Cleanup
-  cd "$HOME"
-  rm -rf "$test_dir"
-
-  if [[ $failed -eq 0 ]]; then
-    return 0
-  else
-    echo "FAIL: $failed .python-version detection tests failed"
-    return 1
-  fi
-}
-
-test_python_version_file_checks_tool_versions() {
-  echo "Testing .tool-versions detection (future enhancement)..."
-
-  # Note: Current implementation only checks .python-version
-  # This test documents expected behavior for future enhancement
-  echo "INFO: Current implementation only supports .python-version (not .tool-versions)"
-  echo "PASS: .python-version is the only supported file format"
-  return 0
-}
-
-test_auto_pyenv_activation_disabled() {
-  echo "Testing auto_pyenv_activate_or_deactivate (pyenv disabled)..."
-
-  # Check that pyenv is disabled in current config
-  if [[ -n "$PYENV_SHELL" || -n "$PYENV_VERSION" ]]; then
-    echo "INFO: pyenv is initialized in current shell"
-  else
-    echo "INFO: pyenv is not initialized (expected per zshrc.local comments)"
-  fi
-
-  # Check that auto_pyenv_activate_or_deactivate function exists
-  if ! type auto_pyenv_activate_or_deactivate >/dev/null 2>&1; then
-    echo "FAIL: auto_pyenv_activate_or_deactivate function not defined"
+  if ! type _auto_activate_uv_venv >/dev/null 2>&1; then
+    echo "FAIL: _auto_activate_uv_venv function not defined"
     return 1
   fi
 
-  # Check that chpwd hook is registered
-  if ! autoload -U add-zsh-hook >/dev/null 2>&1; then
-    echo "FAIL: add-zsh-hook autoload not available"
+  if (( ! ${chpwd_functions[(Ie)_auto_activate_uv_venv]} )); then
+    echo "FAIL: _auto_activate_uv_venv is not a chpwd hook"
     return 1
   fi
 
-  echo "PASS: auto_pyenv_activate_or_deactivate function is defined and hooks are configured"
+  echo "PASS: _auto_activate_uv_venv is defined and hooked to chpwd"
   return 0
 }
 
@@ -309,11 +239,6 @@ test_python_environment_integration() {
     ((failed++))
   fi
 
-  # Check PYENV_VIRTUALENV_DISABLE_PROMPT is set
-  if [[ "$PYENV_VIRTUALENV_DISABLE_PROMPT" != "1" ]]; then
-    echo "INFO: PYENV_VIRTUALENV_DISABLE_PROMPT not set to 1"
-  fi
-
   if [[ $failed -eq 0 ]]; then
     echo "PASS: Python environment hooks and configuration are correct"
   else
@@ -348,9 +273,7 @@ run_python_environment_tests() {
   local failed=0
 
   test_source_first_existing_removed || ((failed++))
-  test_python_version_file_detection || ((failed++))
-  test_python_version_file_checks_tool_versions || ((failed++))
-  test_auto_pyenv_activation_disabled || ((failed++))
+  test_auto_activate_uv_venv || ((failed++))
   test_uv_make_wrapper || ((failed++))
   test_is_uv_project || ((failed++))
   test_get_venv_path || ((failed++))

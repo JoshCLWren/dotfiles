@@ -37,7 +37,7 @@ fi
 
 _dotfiles_path=()
 # Homebrew must precede the system dirs, or `bash` resolves to /bin's ancient
-# 3.2 instead of Homebrew's 5.x (and likewise curl, etc.). pyenv/rbenv/nvm shims
+# 3.2 instead of Homebrew's 5.x (and likewise curl, etc.). rbenv/nvm shims
 # below still prepend in front of this, so language versions are unaffected.
 if [[ "$DOTFILES_OS" == "macos" ]]; then
   _dotfiles_path+=("${_mac_paths[@]}")
@@ -68,14 +68,6 @@ path=(
   $path[@]
 )
 unset _mac_paths _dotfiles_path
-
-# Initialize pyenv if available
-if command -v pyenv 1>/dev/null 2>&1; then
-    # Ensure no existing pyenv function conflicts
-    unset -f pyenv 2>/dev/null || true
-    eval "$(pyenv init -)"
-    eval "$(pyenv virtualenv-init -)"
-fi
 
 # Initialize rbenv if available
 if command -v rbenv 1>/dev/null 2>&1; then
@@ -300,55 +292,15 @@ join-lines() {
 zle -N kube-pod-widget
 bindkey '^k' kube-pod-widget
 
-# Function to recursively find .python-version from the current directory up to the root
-find_python_version_file() {
-  local current_dir=$(pwd)
-
-  while [[ "$current_dir" != "/" ]]; do
-    if [[ -f "$current_dir/.python-version" ]]; then
-      echo "$current_dir/.python-version"
-      return 0
-    fi
-    current_dir=$(dirname "$current_dir")
-  done
-
-  return 1
+# Activate the uv venv in ~/.venvs/<dir name> when one exists
+_auto_activate_uv_venv() {
+  local uv_venv=~/.venvs/"${PWD##*/}"
+  [[ -d "$uv_venv" ]] && source "$uv_venv"/bin/activate 2>/dev/null
 }
 
-# Function to check for .python-version and activate or deactivate pyenv
-# Prefers uv venvs in ~/.venvs/ if they exist
-auto_pyenv_activate_or_deactivate() {
-  local name="${PWD##*/}"
-  local uv_venv=~/.venvs/"$name"
-
-  # Prefer uv venv if it exists
-  if [[ -d "$uv_venv" ]]; then
-    source "$uv_venv"/bin/activate 2>/dev/null
-    return
-  fi
-
-  local python_version_file=$(find_python_version_file)
-
-  if [[ -n "$python_version_file" ]]; then
-    local version
-    version=$(cat "$python_version_file")
-    # Check if the version is installed
-    if pyenv versions --bare | grep -qx "$version"; then
-      pyenv activate "$version" 2>/dev/null || pyenv local "$version"
-    fi
-  else
-    pyenv deactivate 2>/dev/null  # Reverts to the system Python
-  fi
-}
-
-# Hook for automatic pyenv activation
 autoload -U add-zsh-hook
-add-zsh-hook chpwd auto_pyenv_activate_or_deactivate
-add-zsh-hook -D precmd _pyenv_virtualenv_hook
-export PYENV_VIRTUALENV_DISABLE_PROMPT=1
-
-# Initial check in case you start in a directory with .python-version
-auto_pyenv_activate_or_deactivate
+add-zsh-hook chpwd _auto_activate_uv_venv
+_auto_activate_uv_venv
 
 yvba() {
     local target_machine="gitlab.com"
@@ -418,7 +370,7 @@ export LEFTHOOK=0
 # Load fzf key bindings and completion
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
-# Hook direnv into the shell after pyenv is loaded
+# Hook direnv into the shell
 if command -v _evalcache >/dev/null 2>&1; then
   _evalcache direnv hook zsh
 elif command -v direnv >/dev/null 2>&1; then
@@ -695,7 +647,7 @@ uvinstall() {
     fi
   fi
 
-  # Team pyenv projects or legacy: use requirements.txt
+  # Team or legacy projects: use requirements.txt
   if _has_pyproject_deps && [[ ! -f uv.lock ]]; then
     echo "📦 Team project detected (pyproject.toml without uv.lock)"
     echo "   Using requirements.txt workflow for compatibility..."
@@ -815,7 +767,7 @@ add-zsh-hook chpwd _auto_activate_venv
 _auto_activate_venv
 
 # Deduplicate PATH entries while preserving order (must be at the very end)
-# This removes duplicates added by tools like pyenv, google-cloud-sdk, rbenv, etc.
+# This removes duplicates added by tools like google-cloud-sdk, rbenv, etc.
 typeset -U path
 export PATH
 export PATH="$PATH:$HOME/fvm/bin:$HOME/fvm/default/bin"
